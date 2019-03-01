@@ -271,7 +271,7 @@ contract ReserveDollar is IERC20 {
     }
 
     /**
-     * @dev Tunction that mints an amount of the token and assigns it to
+     * @dev Function that mints an amount of the token and assigns it to
      * an account. This encapsulates the modification of balances such that the
      * proper events are emitted.
      * @param account The account that will receive the created tokens.
