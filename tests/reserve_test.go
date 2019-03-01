@@ -160,70 +160,56 @@ func (s *ReserveDollarSuite) TestBalanceOf() {
 	s.assertBalance(common.Address{}, common.Big0)
 }
 
-/*
-func (s *ReserveDollarSuite) TestDeploymentAccountIsAMinter() {
-	isMinter, err := s.reserveImpl.IsMinter(nil, toAddress(s.deployerKey))
-	s.assert.NoError(err)
-	s.assert.True(isMinter)
-}
-
-func (s *ReserveDollarSuite) TestAllowsMinting() {
-	recipient := common.BigToAddress(common.Big1)
-	amount := big.NewInt(100)
-
-	s.requireTx(s.reserve.Mint(s.signer, recipient, amount))
-
-	s.assertBalance(recipient, amount)
-}
-
 func (s *ReserveDollarSuite) TestName() {
 	name, err := s.reserve.Name(nil)
-	s.assert.NoError(err)
-	s.assert.Equal("Reserve Dollar", name)
+	s.NoError(err)
+	s.Equal("Reserve Dollar", name)
 }
 
 func (s *ReserveDollarSuite) TestSymbol() {
 	symbol, err := s.reserve.Symbol(nil)
-	s.assert.NoError(err)
-	s.assert.Equal("RSVD", symbol)
+	s.NoError(err)
+	s.Equal("RSVD", symbol)
 }
 
 func (s *ReserveDollarSuite) TestDecimals() {
 	decimals, err := s.reserve.Decimals(nil)
-	s.assert.NoError(err)
-	s.assert.Equal(uint8(18), decimals)
+	s.NoError(err)
+	s.Equal(uint8(18), decimals)
 }
 
 func (s *ReserveDollarSuite) TestChangeName() {
 	const newName, newSymbol = "Flamingo", "MGO"
 	s.requireTx(
-		s.reserveImpl.ChangeName(s.signer, newName, newSymbol),
+		s.reserve.ChangeName(s.signer, newName, newSymbol),
 	)
 
 	// Check for ChangeName event.
-	nameChangeIter, err := s.reserve.FilterChangeName(nil)
-	if s.assert.NoError(err) {
+	nameChangeIter, err := s.reserve.FilterNameChanged(nil)
+	if s.NoError(err) {
 		events := 0
 		for nameChangeIter.Next() {
 			events++
-			s.assert.Equal(newName, nameChangeIter.Event.NewName)
-			s.assert.Equal(newSymbol, nameChangeIter.Event.NewSymbol)
+			s.Equal(newName, nameChangeIter.Event.NewName)
+			s.Equal(newSymbol, nameChangeIter.Event.NewSymbol)
 		}
-		s.assert.Equal(1, events, "expected exactly one ChangeName event")
-		s.assert.NoError(nameChangeIter.Error())
-		s.assert.NoError(nameChangeIter.Close())
+		s.Equal(1, events, "expected exactly one NameChanged event")
+		s.NoError(nameChangeIter.Error())
+		s.NoError(nameChangeIter.Close())
 	}
 
 	// Check new name.
 	name, err := s.reserve.Name(nil)
-	s.assert.NoError(err)
-	s.assert.Equal(newName, name)
+	s.NoError(err)
+	s.Equal(newName, name)
 
 	// Check new symbol.
 	symbol, err := s.reserve.Symbol(nil)
-	s.assert.NoError(err)
-	s.assert.Equal(newSymbol, symbol)
+	s.NoError(err)
+	s.Equal(newSymbol, symbol)
 }
+
+/*
 
 func (s *ReserveDollarSuite) TestPausing() {
 	// Pause.
