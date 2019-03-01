@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -20,6 +22,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/reserve-protocol/reserve-dollar/abi"
+	"github.com/reserve-protocol/reserve-dollar/soltools"
 )
 
 func TestReserveDollar(t *testing.T) {
@@ -31,7 +34,10 @@ type ReserveDollarSuite struct {
 
 	account []account
 	signer  *bind.TransactOpts
-	node    backend
+	node    interface {
+		bind.ContractBackend
+		TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
+	}
 	reserve *abi.ReserveDollar
 	assert  *assert.Assertions
 	require *require.Assertions
@@ -62,9 +68,6 @@ func (s *ReserveDollarSuite) requireTxFails(tx *types.Transaction, err error) {
 		"failed to estimate gas needed: gas required exceeds allowance or always failing transaction" {
 		return
 	}
-
-	fmt.Printf("%q\n", err.Error())
-
 	_requireTxStatus(s, tx, err, types.ReceiptStatusFailed)
 }
 
@@ -94,11 +97,54 @@ func (s *ReserveDollarSuite) assertTotalSupply(amount *big.Int) {
 	s.Equal(amount.String(), totalSupply.String())
 }
 
-func (s *ReserveDollarSuite) SetupSuite() {
-	//var err error
-	//s.node, err = soltools.NewBackend("http://localhost:8545", repo.Path("fiatcoin/artifacts"), repo.Path("fiatcoin"))
-	//s.Require().NoError(err)
+func (s *ReserveDollarSuite) createFastNode() {
+	genesisAlloc := core.GenesisAlloc{}
+	for _, account := range s.account {
+		genesisAlloc[account.address()] = core.GenesisAccount{
+			Balance: big.NewInt(math.MaxInt64),
+		}
+	}
+	s.node = backend{
+		backends.NewSimulatedBackend(
+			genesisAlloc,
+			// TODO: the tests fail if this is 4e6. why?
+			8e6, // roughly same order of magnitude as mainnet
+		),
+	}
+}
 
+func (s *ReserveDollarSuite) createSlowCoverageNode() {
+	fmt.Fprintln(os.Stderr, "A local geth node must be running for coverage to work.")
+	fmt.Fprintln(os.Stderr, "If one is not already running, start one in a new terminal with:")
+	fmt.Fprintln(os.Stderr, "\tdocker run -it --rm -p 8545:8501 0xorg/devnet")
+
+	var err error
+	s.node, err = soltools.NewBackend("http://localhost:8545")
+	s.Require().NoError(err)
+
+	// Throwaway initial transaction.
+	// The tests fail if running against a newly-initialized 0xorg/devnet container.
+	// I (jeremy) suspect that this is because the node is configured to move through
+	// the historical Ethereum hard forks over the course of the first few blocks, rather
+	// than all at once in the first block. Meaning the first transactions run against different
+	// versions of Etherum than the rest of the transactions:
+	//
+	//   https://github.com/0xProject/0x-monorepo/blob/e909faa3ef9cea5d9b4044b993251e98afdb0d19/packages/devnet/genesis.json#L4-L9
+	//
+	// To work around this issue, we try to send a throwaway transaction at the beginning with a
+	// Homestead-style signature. This will fail if it is not the first transaction on the chain,
+	// but that's ok. If it is the first transaction on the chain, it succeeds and causes the chain
+	// to advance by one block, upgrading the Ethereum version and allowing the rest of the tests
+	// to pass.
+	tx, _ := types.SignTx(
+		types.NewTransaction(0, common.Address{100}, common.Big0, 21000, common.Big1, nil),
+		types.HomesteadSigner{},
+		s.account[0].key,
+	)
+	s.node.SendTransaction(context.Background(), tx)
+}
+
+func (s *ReserveDollarSuite) SetupSuite() {
 	// The first few keys from the following well-known mnemonic used by 0x:
 	//	concert load couple harbor equip island argue ramp clarify fence smart topic
 	keys := []string{
@@ -118,50 +164,17 @@ func (s *ReserveDollarSuite) SetupSuite() {
 	}
 	s.signer = signer(s.account[0])
 
-	genesisAlloc := core.GenesisAlloc{}
-	for _, account := range s.account {
-		genesisAlloc[account.address()] = core.GenesisAccount{
-			Balance: big.NewInt(math.MaxInt64),
-		}
+	if testing.CoverMode() == "" {
+		s.createFastNode()
+	} else {
+		s.createSlowCoverageNode()
 	}
-	s.node = backend{
-		backends.NewSimulatedBackend(
-			genesisAlloc,
-			// TODO: the tests fail if this is 4e6. why?
-			8e6, // roughly same order of magnitude as mainnet
-		),
-	}
-
-	/*
-		{
-			// Throwaway initial transaction.
-			// The tests fail if running against a newly-initialized 0xorg/devnet container.
-			// I (jeremy) suspect that this is because the node is configured to move through
-			// the historical Ethereum hard forks over the course of the first few blocks, rather
-			// than all at once in the first block. Meaning the first transactions run against different
-			// versions of Etherum than the rest of the transactions:
-			//
-			//   https://github.com/0xProject/0x-monorepo/blob/e909faa3ef9cea5d9b4044b993251e98afdb0d19/packages/devnet/genesis.json#L4-L9
-			//
-			// To work around this issue, we try to send a throwaway transaction at the beginning with a
-			// Homestead-style signature. This will fail if it is not the first transaction on the chain,
-			// but that's ok. If it is the first transaction on the chain, it succeeds and causes the chain
-			// to advance by one block, upgrading the Ethereum version and allowing the rest of the tests
-			// to pass.
-			tx, _ := types.SignTx(
-				types.NewTransaction(0, common.Address{}, common.Big0, 21000, common.Big1, nil),
-				types.HomesteadSigner{},
-				s.deployerKey,
-			)
-			s.node.SendTransaction(context.Background(), tx)
-		}
-	*/
 }
 
 func (s *ReserveDollarSuite) TearDownSuite() {
-	/*
-		s.Assert().NoError(s.node.WriteCoverage())
-		s.Assert().NoError(s.node.Close())
+	if testing.CoverMode() != "" {
+		s.Assert().NoError(s.node.(*soltools.Backend).WriteCoverage())
+		s.Assert().NoError(s.node.(*soltools.Backend).Close())
 
 		if out, err := exec.Command("npx", "istanbul", "report", "html").CombinedOutput(); err != nil {
 			fmt.Println()
@@ -170,7 +183,7 @@ func (s *ReserveDollarSuite) TearDownSuite() {
 			fmt.Println("The error I got when running istanbul was:", err)
 			fmt.Println("Istanbul's output was:\n" + string(out))
 		}
-	*/
+	}
 }
 
 func (s *ReserveDollarSuite) BeforeTest(suiteName, testName string) {

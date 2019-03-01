@@ -11,6 +11,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/pborman/uuid v1.2.0 // indirect
+	github.com/pkg/errors v0.8.1
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/rs/cors v1.6.0 // indirect
 	github.com/stretchr/testify v1.3.0
