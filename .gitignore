@@ -10,3 +10,11 @@ tests/coverage/
 #*#
 
 tests/tests.test
+
+
+# generated for use in tests. Some of the code is modified during generation to
+# support testing.
+tests/ReserveDollar.sol
+tests/ReserveDollarEternalStorage.sol
+tests/zeppelin
+
