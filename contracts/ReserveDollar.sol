@@ -44,14 +44,17 @@ contract ReserveDollar is IERC20 {
     string public symbol = "RSVD";
     uint8 public constant decimals = 18;
 
-    address private owner;
+    bool public paused;
 
+    address private owner;
     address minter;
+    address pauser;
 
     constructor() public {
         data = new ReserveDollarEternalStorage();
         owner = msg.sender;
         minter = msg.sender;
+        pauser = msg.sender;
     }
 
     /**
@@ -76,6 +79,24 @@ contract ReserveDollar is IERC20 {
         name = newName;
         symbol = newSymbol;
         emit NameChanged(newName, newSymbol);
+    }
+
+    event Paused(address account);
+    event Unpaused(address account);
+
+    function pause() public onlyRole(pauser) {
+        paused = true;
+        emit Paused(pauser);
+    }
+
+    function unpause() public onlyRole(pauser) {
+        paused = false;
+        emit Unpaused(pauser);
+    }
+
+    modifier whenNotPaused() {
+        require(!paused);
+        _;
     }
 
     /**
@@ -109,7 +130,7 @@ contract ReserveDollar is IERC20 {
      * @param to The address to transfer to.
      * @param value The amount to be transferred.
      */
-    function transfer(address to, uint256 value) public returns (bool) {
+    function transfer(address to, uint256 value) public whenNotPaused returns (bool) {
         _transfer(msg.sender, to, value);
         return true;
     }
@@ -124,7 +145,7 @@ contract ReserveDollar is IERC20 {
      * @param spender The address which will spend the funds.
      * @param value The amount of tokens to be spent.
      */
-    function approve(address spender, uint256 value) public returns (bool) {
+    function approve(address spender, uint256 value) public whenNotPaused returns (bool) {
         _approve(msg.sender, spender, value);
         return true;
     }
@@ -137,7 +158,7 @@ contract ReserveDollar is IERC20 {
      * @param to address The address which you want to transfer to
      * @param value uint256 the amount of tokens to be transferred
      */
-    function transferFrom(address from, address to, uint256 value) public returns (bool) {
+    function transferFrom(address from, address to, uint256 value) public whenNotPaused returns (bool) {
         _transfer(from, to, value);
         _approve(from, msg.sender, data.allowed(from, msg.sender).sub(value));
         return true;
@@ -153,7 +174,7 @@ contract ReserveDollar is IERC20 {
      * @param spender The address which will spend the funds.
      * @param addedValue The amount of tokens to increase the allowance by.
      */
-    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) public whenNotPaused returns (bool) {
         _approve(msg.sender, spender, data.allowed(msg.sender, spender).add(addedValue));
         return true;
     }
@@ -168,7 +189,7 @@ contract ReserveDollar is IERC20 {
      * @param spender The address which will spend the funds.
      * @param subtractedValue The amount of tokens to decrease the allowance by.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
+    function decreaseAllowance(address spender, uint256 subtractedValue) public whenNotPaused returns (bool) {
         _approve(msg.sender, spender, data.allowed(msg.sender, spender).sub(subtractedValue));
         return true;
     }
@@ -194,7 +215,7 @@ contract ReserveDollar is IERC20 {
      * @param account The account that will receive the created tokens.
      * @param value The amount that will be created.
      */
-    function mint(address account, uint256 value) public onlyRole(minter) {
+    function mint(address account, uint256 value) public whenNotPaused onlyRole(minter) {
         require(account != address(0));
 
         _totalSupply = _totalSupply.add(value);

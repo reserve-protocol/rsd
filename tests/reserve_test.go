@@ -363,15 +363,13 @@ func (s *ReserveDollarSuite) TestDecreaseAllowance() {
 	s.assertTotalSupply(common.Big0)
 }
 
-/*
-
 func (s *ReserveDollarSuite) TestPausing() {
-	// Pause.
-	s.requireTx(s.reserveImpl.Pause(s.signer))
-
-	// Minting is allowed while paused.
+	// Minting is not allowed while paused.
 	amount := big.NewInt(100)
-	s.requireTx(s.reserve.Mint(s.signer, toAddress(s.deployerKey), amount))
+	s.requireTx(s.reserve.Mint(s.signer, s.account[0].address(), amount))
+
+	// Pause.
+	s.requireTx(s.reserve.Pause(s.signer))
 
 	// Transfers are not allowed while paused.
 	recipient := common.BigToAddress(common.Big1)
@@ -379,13 +377,12 @@ func (s *ReserveDollarSuite) TestPausing() {
 	s.assertBalance(recipient, common.Big0)
 
 	// Unpause.
-	s.requireTx(s.reserveImpl.Unpause(s.signer))
+	s.requireTx(s.reserve.Unpause(s.signer))
 
 	// Transfers are allowed while unpaused.
 	s.requireTx(s.reserve.Transfer(s.signer, recipient, amount))
 	s.assertBalance(recipient, amount)
 }
-*/
 
 type backend struct {
 	*backends.SimulatedBackend
