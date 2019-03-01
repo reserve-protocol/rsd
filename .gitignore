@@ -1,5 +1,0 @@
-abi/*.go
-!abi/generate.go
-
-artifacts/
-node_modules/
