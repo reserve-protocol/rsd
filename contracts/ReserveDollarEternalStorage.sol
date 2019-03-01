@@ -1,5 +1,7 @@
 pragma solidity ^0.5.4;
 
+import "./zeppelin/SafeMath.sol";
+
 /**
  * @title Eternal Storage for the Reserve Dollar
  *
@@ -15,6 +17,12 @@ pragma solidity ^0.5.4;
  * necessarily re-use this storage. It merely provides option value.
  */
 contract ReserveDollarEternalStorage {
+
+    /**
+     * MATH
+     */
+    using SafeMath for uint256;
+
     /**
      * OWNERSHIP
      */
@@ -56,8 +64,12 @@ contract ReserveDollarEternalStorage {
         return _balance[key];
     }
 
-    function setBalance(address key, uint256 value) public onlyOwner {
-        _balance[key] = value;
+    function addBalance(address key, uint256 value) public onlyOwner {
+        _balance[key] = _balance[key].add(value);
+    }
+
+    function subBalance(address key, uint256 value) public onlyOwner {
+        _balance[key] = _balance[key].sub(value);
     }
 
     // _allowed

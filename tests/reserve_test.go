@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"fmt"
 	"math"
 	"math/big"
 	"testing"
@@ -28,12 +29,12 @@ func TestReserveDollar(t *testing.T) {
 type ReserveDollarSuite struct {
 	suite.Suite
 
-	accounts []*ecdsa.PrivateKey
-	signer   *bind.TransactOpts
-	node     backend
-	reserve  *abi.ReserveDollar
-	assert   *assert.Assertions
-	require  *require.Assertions
+	account []account
+	signer  *bind.TransactOpts
+	node    backend
+	reserve *abi.ReserveDollar
+	assert  *assert.Assertions
+	require *require.Assertions
 }
 
 var (
@@ -53,23 +54,38 @@ func (s *ReserveDollarSuite) requireTx(tx *types.Transaction, err error) {
 	_requireTxStatus(s, tx, err, types.ReceiptStatusSuccessful)
 }
 
-// requireTxReverts is like requireTx, but it requires that the transaction reverts.
-func (s *ReserveDollarSuite) requireTxReverts(tx *types.Transaction, err error) {
+// requireTxFails is like requireTx, but it requires that the transaction either
+// reverts or is not successfully made in the first place due to gas estimation
+// failing.
+func (s *ReserveDollarSuite) requireTxFails(tx *types.Transaction, err error) {
+	if err != nil && err.Error() ==
+		"failed to estimate gas needed: gas required exceeds allowance or always failing transaction" {
+		return
+	}
+
+	fmt.Printf("%q\n", err.Error())
+
 	_requireTxStatus(s, tx, err, types.ReceiptStatusFailed)
 }
 
 func _requireTxStatus(s *ReserveDollarSuite, tx *types.Transaction, err error, status uint64) {
-	s.require.NoError(err)
-	s.require.NotNil(tx)
+	s.Require().NoError(err)
+	s.Require().NotNil(tx)
 	receipt, err := bind.WaitMined(context.Background(), s.node, tx)
-	s.require.NoError(err)
-	s.require.Equal(status, receipt.Status)
+	s.Require().NoError(err)
+	s.Require().Equal(status, receipt.Status)
 }
 
 func (s *ReserveDollarSuite) assertBalance(address common.Address, amount *big.Int) {
 	balance, err := s.reserve.BalanceOf(nil, address)
-	s.assert.NoError(err)
-	s.assert.Equal(amount.String(), balance.String()) // assert.Equal can mis-compare big.Ints, so compare strings instead
+	s.NoError(err)
+	s.Equal(amount.String(), balance.String()) // assert.Equal can mis-compare big.Ints, so compare strings instead
+}
+
+func (s *ReserveDollarSuite) assertTotalSupply(amount *big.Int) {
+	totalSupply, err := s.reserve.TotalSupply(nil)
+	s.NoError(err)
+	s.Equal(amount.String(), totalSupply.String())
 }
 
 func (s *ReserveDollarSuite) SetupSuite() {
@@ -77,22 +93,28 @@ func (s *ReserveDollarSuite) SetupSuite() {
 	//s.node, err = soltools.NewBackend("http://localhost:8545", repo.Path("fiatcoin/artifacts"), repo.Path("fiatcoin"))
 	//s.Require().NoError(err)
 
+	// The first few keys from the following well-known mnemonic used by 0x:
+	//	concert load couple harbor equip island argue ramp clarify fence smart topic
 	keys := []string{
 		"f2f48ee19680706196e2e339e5da3491186e0c4c5030670656b0e0164837257d",
 		"5d862464fe9303452126c8bc94274b8c5f9874cbd219789b3eb2128075a76f72",
+		"df02719c4df8b9b8ac7f551fcb5d9ef48fa27eef7a66453879f4d8fdc6e78fb1",
+		"ff12e391b79415e941a94de3bf3a9aee577aed0731e297d5cfa0b8a1e02fa1d0",
+		"752dd9cf65e68cfaba7d60225cbdbc1f4729dd5e5507def72815ed0d8abc6249",
+		"efb595a0178eb79a8df953f87c5148402a224cdf725e88c0146727c6aceadccd",
 	}
-	s.accounts = make([]*ecdsa.PrivateKey, len(keys))
+	s.account = make([]account, len(keys))
 	for i, key := range keys {
 		b, err := hex.DecodeString(key)
 		s.Require().NoError(err)
-		s.accounts[i], err = crypto.ToECDSA(b)
+		s.account[i].key, err = crypto.ToECDSA(b)
 		s.Require().NoError(err)
 	}
-	s.signer = signer(s.accounts[0])
+	s.signer = signer(s.account[0])
 
 	genesisAlloc := core.GenesisAlloc{}
-	for _, account := range s.accounts {
-		genesisAlloc[toAddress(account)] = core.GenesisAccount{
+	for _, account := range s.account {
+		genesisAlloc[account.address()] = core.GenesisAccount{
 			Balance: big.NewInt(math.MaxInt64),
 		}
 	}
@@ -145,9 +167,6 @@ func (s *ReserveDollarSuite) TearDownSuite() {
 }
 
 func (s *ReserveDollarSuite) BeforeTest(suiteName, testName string) {
-	s.assert = s.Assert()
-	s.require = s.Require()
-
 	_, tx, reserve, err := abi.DeployReserveDollar(s.signer, s.node)
 	s.requireTx(tx, err)
 
@@ -215,7 +234,46 @@ func (s *ReserveDollarSuite) TestAllowsMinting() {
 
 	s.requireTx(s.reserve.Mint(s.signer, recipient, amount))
 
+	s.assertBalance(s.account[0].address(), common.Big0)
 	s.assertBalance(recipient, amount)
+	s.assertTotalSupply(amount)
+}
+
+func (s *ReserveDollarSuite) TestTransfer() {
+	sender := s.account[1]
+	recipient := common.BigToAddress(common.Big1)
+	amount := big.NewInt(100)
+
+	// Mint to sender.
+	s.requireTx(s.reserve.Mint(s.signer, sender.address(), amount))
+
+	// Transfer from sender to recipient.
+	s.requireTx(s.reserve.Transfer(signer(sender), recipient, amount))
+
+	// Check that balances are as expected.
+	s.assertBalance(sender.address(), common.Big0)
+	s.assertBalance(recipient, amount)
+	s.assertBalance(s.account[0].address(), common.Big0)
+	s.assertTotalSupply(amount)
+}
+
+func (s *ReserveDollarSuite) TestTransferExceedsFunds() {
+	sender := s.account[1]
+	recipient := common.BigToAddress(common.Big1)
+	amount := big.NewInt(100)
+	smallAmount := big.NewInt(10) // must be smaller than amount
+
+	// Mint smallAmount to sender.
+	s.requireTx(s.reserve.Mint(s.signer, sender.address(), smallAmount))
+
+	// Transfer from sender to recipient should fail.
+	s.requireTxFails(s.reserve.Transfer(signer(sender), recipient, amount))
+
+	// Balances should be as we expect.
+	s.assertBalance(sender.address(), smallAmount)
+	s.assertBalance(recipient, common.Big0)
+	s.assertBalance(s.account[0].address(), common.Big0)
+	s.assertTotalSupply(smallAmount)
 }
 
 /*
@@ -230,7 +288,7 @@ func (s *ReserveDollarSuite) TestPausing() {
 
 	// Transfers are not allowed while paused.
 	recipient := common.BigToAddress(common.Big1)
-	s.requireTxReverts(s.reserve.Transfer(s.signer, recipient, amount))
+	s.requireTxFails(s.reserve.Transfer(s.signer, recipient, amount))
 	s.assertBalance(recipient, common.Big0)
 
 	// Unpause.
@@ -251,10 +309,14 @@ func (b backend) SendTransaction(ctx context.Context, tx *types.Transaction) err
 	return b.SimulatedBackend.SendTransaction(ctx, tx)
 }
 
-func toAddress(key *ecdsa.PrivateKey) common.Address {
-	return crypto.PubkeyToAddress(key.PublicKey)
+func signer(a account) *bind.TransactOpts {
+	return bind.NewKeyedTransactor(a.key)
 }
 
-func signer(key *ecdsa.PrivateKey) *bind.TransactOpts {
-	return bind.NewKeyedTransactor(key)
+type account struct {
+	key *ecdsa.PrivateKey
+}
+
+func (a account) address() common.Address {
+	return crypto.PubkeyToAddress(a.key.PublicKey)
 }
