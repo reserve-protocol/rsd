@@ -384,6 +384,115 @@ func (s *ReserveDollarSuite) TestPausing() {
 	s.assertBalance(recipient, amount)
 }
 
+func (s *ReserveDollarSuite) TestFreezeTransferOut() {
+	target := s.account[1]
+	recipient := s.account[2]
+
+	// Give target funds.
+	amount := common.Big1
+	s.requireTx(s.reserve.Mint(s.signer, target.address(), amount))
+
+	// Freeze target.
+	s.requireTx(s.reserve.Freeze(s.signer, target.address()))
+
+	// Frozen account shouldn't be able to transfer.
+	s.requireTxFails(s.reserve.Transfer(signer(target), recipient.address(), amount))
+
+	// Unfreeze target.
+	s.requireTx(s.reserve.Unfreeze(s.signer, target.address()))
+
+	// Unfrozen account should be able to transfer again.
+	s.requireTx(s.reserve.Transfer(signer(target), recipient.address(), amount))
+	s.assertBalance(recipient.address(), amount)
+}
+
+func (s *ReserveDollarSuite) TestFreezeTransferIn() {
+	target := s.account[1]
+	amount := big.NewInt(200)
+
+	// Mint initial funds to deployer.
+	s.requireTx(s.reserve.Mint(s.signer, s.account[0].address(), amount))
+
+	// Freeze target.
+	s.requireTx(s.reserve.Freeze(s.signer, target.address()))
+
+	// Frozen account shouldn't be able to receive funds.
+	s.requireTxFails(s.reserve.Transfer(s.signer, target.address(), amount))
+
+	// Unfreeze target.
+	s.requireTx(s.reserve.Unfreeze(s.signer, target.address()))
+
+	// Frozen account should be able to receive funds again.
+	s.requireTx(s.reserve.Transfer(s.signer, target.address(), amount))
+	s.assertBalance(target.address(), amount)
+}
+
+func (s *ReserveDollarSuite) TestFreezeApprovals() {
+	target := s.account[1]
+	recipient := s.account[2]
+
+	// Freeze target.
+	s.requireTx(s.reserve.Freeze(s.signer, target.address()))
+
+	// Frozen account shouldn't be able to create approvals.
+	s.requireTxFails(s.reserve.Approve(signer(target), recipient.address(), common.Big1))
+	s.requireTxFails(s.reserve.IncreaseAllowance(signer(target), recipient.address(), common.Big1))
+	s.assertAllowance(target.address(), recipient.address(), common.Big0)
+
+	// Unfreeze target.
+	s.requireTx(s.reserve.Unfreeze(s.signer, target.address()))
+
+	// Unfrozen account should be able to create approvals again.
+	s.requireTx(s.reserve.Approve(signer(target), recipient.address(), common.Big1))
+	s.requireTx(s.reserve.IncreaseAllowance(signer(target), recipient.address(), common.Big1))
+	s.assertAllowance(target.address(), recipient.address(), big.NewInt(2))
+}
+
+func (s *ReserveDollarSuite) TestFreezeTransferFrom() {
+	target := s.account[1]
+	recipient := s.account[2]
+
+	// Approve target to transfer funds.
+	amount := common.Big1
+	s.requireTx(s.reserve.Mint(s.signer, s.account[0].address(), amount))
+	s.requireTx(s.reserve.Approve(s.signer, target.address(), amount))
+	s.assertAllowance(s.account[0].address(), target.address(), amount)
+
+	// Freeze target.
+	s.requireTx(s.reserve.Freeze(s.signer, target.address()))
+
+	// Frozen account shouldn't be able to call transferFrom.
+	s.requireTxFails(s.reserve.TransferFrom(signer(target), s.account[0].address(), recipient.address(), amount))
+	s.assertBalance(recipient.address(), common.Big0)
+
+	// Unfreeze target.
+	s.requireTx(s.reserve.Unfreeze(s.signer, target.address()))
+
+	// Unfrozen account should now be able to call transferFrom.
+	s.requireTx(s.reserve.TransferFrom(signer(target), s.account[0].address(), recipient.address(), amount))
+	s.assertBalance(recipient.address(), amount)
+}
+
+func (s *ReserveDollarSuite) TestFreezeReceiveApproval() {
+	target := s.account[1]
+
+	// Freeze target.
+	s.requireTx(s.reserve.Freeze(s.signer, target.address()))
+
+	// Should not be able to approve frozen target.
+	s.requireTxFails(s.reserve.Approve(s.signer, target.address(), common.Big1))
+	s.requireTxFails(s.reserve.IncreaseAllowance(s.signer, target.address(), common.Big1))
+	s.assertAllowance(s.account[0].address(), target.address(), common.Big0)
+
+	// Unfreeze target.
+	s.requireTx(s.reserve.Unfreeze(s.signer, target.address()))
+
+	// Should be able to approve unfrozen target.
+	s.requireTx(s.reserve.Approve(s.signer, target.address(), common.Big1))
+	s.requireTx(s.reserve.IncreaseAllowance(s.signer, target.address(), common.Big1))
+	s.assertAllowance(s.account[0].address(), target.address(), big.NewInt(2))
+}
+
 type backend struct {
 	*backends.SimulatedBackend
 }

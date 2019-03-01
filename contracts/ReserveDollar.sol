@@ -46,15 +46,19 @@ contract ReserveDollar is IERC20 {
 
     bool public paused;
 
+    mapping (address => bool) frozen;
+
     address private owner;
     address minter;
     address pauser;
+    address freezer;
 
     constructor() public {
         data = new ReserveDollarEternalStorage();
         owner = msg.sender;
         minter = msg.sender;
         pauser = msg.sender;
+        freezer = msg.sender;
     }
 
     /**
@@ -99,6 +103,26 @@ contract ReserveDollar is IERC20 {
         _;
     }
 
+    event Frozen(address freezer, address account);
+    event Unfrozen(address freezer, address account);
+
+    function freeze(address who) public onlyRole(freezer) {
+        require(!frozen[who], "account already frozen");
+        frozen[who] = true;
+        emit Frozen(freezer, who);
+    }
+
+    function unfreeze(address who) public onlyRole(freezer) {
+        require(frozen[who], "account not frozen");
+        frozen[who] = false;
+        emit Unfrozen(freezer, who);
+    }
+
+    modifier notFrozen(address account) {
+        require(!frozen[account], "account frozen");
+        _;
+    }
+
     /**
      * @dev Total number of tokens in existence
      */
@@ -130,7 +154,13 @@ contract ReserveDollar is IERC20 {
      * @param to The address to transfer to.
      * @param value The amount to be transferred.
      */
-    function transfer(address to, uint256 value) public whenNotPaused returns (bool) {
+    function transfer(address to, uint256 value)
+        public
+        whenNotPaused
+        notFrozen(msg.sender)
+        notFrozen(to)
+        returns (bool)
+    {
         _transfer(msg.sender, to, value);
         return true;
     }
@@ -145,7 +175,13 @@ contract ReserveDollar is IERC20 {
      * @param spender The address which will spend the funds.
      * @param value The amount of tokens to be spent.
      */
-    function approve(address spender, uint256 value) public whenNotPaused returns (bool) {
+    function approve(address spender, uint256 value)
+        public
+        whenNotPaused
+        notFrozen(msg.sender)
+        notFrozen(spender)
+        returns (bool)
+    {
         _approve(msg.sender, spender, value);
         return true;
     }
@@ -158,7 +194,14 @@ contract ReserveDollar is IERC20 {
      * @param to address The address which you want to transfer to
      * @param value uint256 the amount of tokens to be transferred
      */
-    function transferFrom(address from, address to, uint256 value) public whenNotPaused returns (bool) {
+    function transferFrom(address from, address to, uint256 value)
+        public
+        whenNotPaused
+        notFrozen(msg.sender)
+        notFrozen(from)
+        notFrozen(to)
+        returns (bool)
+    {
         _transfer(from, to, value);
         _approve(from, msg.sender, data.allowed(from, msg.sender).sub(value));
         return true;
@@ -174,7 +217,13 @@ contract ReserveDollar is IERC20 {
      * @param spender The address which will spend the funds.
      * @param addedValue The amount of tokens to increase the allowance by.
      */
-    function increaseAllowance(address spender, uint256 addedValue) public whenNotPaused returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue)
+        public
+        whenNotPaused
+        notFrozen(msg.sender)
+        notFrozen(spender)
+        returns (bool)
+    {
         _approve(msg.sender, spender, data.allowed(msg.sender, spender).add(addedValue));
         return true;
     }
@@ -189,7 +238,13 @@ contract ReserveDollar is IERC20 {
      * @param spender The address which will spend the funds.
      * @param subtractedValue The amount of tokens to decrease the allowance by.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue) public whenNotPaused returns (bool) {
+    function decreaseAllowance(address spender, uint256 subtractedValue)
+        public
+        whenNotPaused
+        notFrozen(msg.sender)
+        notFrozen(spender)
+        returns (bool)
+    {
         _approve(msg.sender, spender, data.allowed(msg.sender, spender).sub(subtractedValue));
         return true;
     }
