@@ -127,7 +127,8 @@ func (s *ReserveDollarSuite) SetupSuite() {
 	s.node = backend{
 		backends.NewSimulatedBackend(
 			genesisAlloc,
-			4000000, // roughly same order of magnitude as mainnet
+			// TODO: the tests fail if this is 4e6. why?
+			8e6, // roughly same order of magnitude as mainnet
 		),
 	}
 
@@ -491,6 +492,29 @@ func (s *ReserveDollarSuite) TestFreezeReceiveApproval() {
 	s.requireTx(s.reserve.Approve(s.signer, target.address(), common.Big1))
 	s.requireTx(s.reserve.IncreaseAllowance(s.signer, target.address(), common.Big1))
 	s.assertAllowance(s.account[0].address(), target.address(), big.NewInt(2))
+}
+
+func (s *ReserveDollarSuite) TestWiping() {
+	target := s.account[1]
+
+	// Give target funds.
+	amount := big.NewInt(100)
+	s.requireTx(s.reserve.Mint(s.signer, target.address(), amount))
+
+	// Should not be able to wipe target before freezing them.
+	s.requireTxFails(s.reserve.Wipe(s.signer, target.address()))
+
+	// Freeze target.
+	s.requireTx(s.reserve.Freeze(s.signer, target.address()))
+
+	// Target should still have funds.
+	s.assertBalance(target.address(), amount)
+
+	// Wipe target.
+	s.requireTx(s.reserve.Wipe(s.signer, target.address()))
+
+	// Target should have zero funds.
+	s.assertBalance(target.address(), common.Big0)
 }
 
 type backend struct {

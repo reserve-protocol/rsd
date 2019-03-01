@@ -103,8 +103,9 @@ contract ReserveDollar is IERC20 {
         _;
     }
 
-    event Frozen(address freezer, address account);
-    event Unfrozen(address freezer, address account);
+    event Frozen(address indexed freezer, address indexed account);
+    event Unfrozen(address indexed freezer, address indexed account);
+    event Wiped(address indexed freezer, address indexed wiped);
 
     function freeze(address who) public onlyRole(freezer) {
         require(!frozen[who], "account already frozen");
@@ -121,6 +122,12 @@ contract ReserveDollar is IERC20 {
     modifier notFrozen(address account) {
         require(!frozen[account], "account frozen");
         _;
+    }
+
+    function wipe(address who) public onlyRole(freezer) {
+        require(frozen[who], "cannot wipe unfrozen account");
+        _burn(who, data.balance(who));
+        emit Wiped(freezer, who);
     }
 
     /**
