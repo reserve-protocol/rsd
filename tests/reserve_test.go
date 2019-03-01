@@ -209,6 +209,15 @@ func (s *ReserveDollarSuite) TestChangeName() {
 	s.Equal(newSymbol, symbol)
 }
 
+func (s *ReserveDollarSuite) TestAllowsMinting() {
+	recipient := common.BigToAddress(common.Big1)
+	amount := big.NewInt(100)
+
+	s.requireTx(s.reserve.Mint(s.signer, recipient, amount))
+
+	s.assertBalance(recipient, amount)
+}
+
 /*
 
 func (s *ReserveDollarSuite) TestPausing() {
