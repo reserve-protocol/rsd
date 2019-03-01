@@ -3,3 +3,6 @@ bindings:
 
 test: bindings
 	go test ./tests
+
+fmt:
+	npx solium -d contracts/ --fix

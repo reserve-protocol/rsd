@@ -13,10 +13,10 @@ import "./ReserveDollarEternalStorage.sol";
  */
 contract ReserveDollar {
 
-	/**
-	 * MATH
-	 */
-	using SafeMath for uint256;
+    /**
+     * MATH
+     */
+    using SafeMath for uint256;
 
     /**
      * DATA
@@ -33,13 +33,13 @@ contract ReserveDollar {
 
     address private owner;
 
-	// ROLES
-	address minter;
+    // ROLES
+    address minter;
 
     constructor() public {
         data = new ReserveDollarEternalStorage();
         owner = msg.sender;
-		minter = msg.sender;
+        minter = msg.sender;
     }
 
     /**
@@ -47,14 +47,14 @@ contract ReserveDollar {
      */
 
     event NameChanged(string newName, string newSymbol);
-	event TokensMinted(address indexed to, uint256 quantity);
-	event Transfer(address indexed from, address indexed to, uint256 quantity);
+    event TokensMinted(address indexed to, uint256 quantity);
+    event Transfer(address indexed from, address indexed to, uint256 quantity);
 
     /**
      * FUNCTIONALITY
      */
 
-	// AUTHORIZATION FUNCTIONALITY
+    // AUTHORIZATION FUNCTIONALITY
 
     /**
      * @dev Throws if called by any account other than the owner.
@@ -67,10 +67,10 @@ contract ReserveDollar {
     /**
      * @dev Throws if called by any account other than role.
      */
-	modifier onlyRole(address role) {
-		require(msg.sender == role, "onlyRole");
-		_;
-	}
+    modifier onlyRole(address role) {
+        require(msg.sender == role, "onlyRole");
+        _;
+    }
 
     // Name change functionality
     function changeName(string memory newName, string memory newSymbol) public onlyOwner {
@@ -85,12 +85,12 @@ contract ReserveDollar {
         return data.balance(who);
     }
 
-	// MINTING FUNCTIONALITY
+    // MINTING FUNCTIONALITY
 
-	function mint(address to, uint256 value) public onlyRole(minter) {
+    function mint(address to, uint256 value) public onlyRole(minter) {
         totalSupply = totalSupply.add(value);
-		data.setBalance(to, data.balance(to).add(value));
-		emit TokensMinted(to, value);
-		emit Transfer(address(0), to, value);
-	}
+        data.setBalance(to, data.balance(to).add(value));
+        emit TokensMinted(to, value);
+        emit Transfer(address(0), to, value);
+    }
 }
