@@ -56,31 +56,23 @@ contract ReserveDollarEternalStorage {
      * DATA
      */
 
-    // _balance
+    // balance
 
-    mapping (address => uint256) private _balance;
-
-    function balance(address key) public view onlyOwner returns (uint256) {
-        return _balance[key];
-    }
+    mapping (address => uint256) public balance;
 
     function addBalance(address key, uint256 value) public onlyOwner {
-        _balance[key] = _balance[key].add(value);
+        balance[key] = balance[key].add(value);
     }
 
     function subBalance(address key, uint256 value) public onlyOwner {
-        _balance[key] = _balance[key].sub(value);
+        balance[key] = balance[key].sub(value);
     }
 
-    // _allowed
+    // allowed
 
-    mapping (address => uint256) private _allowed;
+    mapping (address => mapping (address => uint256)) public allowed;
 
-    function allowed(address key) public view onlyOwner returns (uint256) {
-        return _allowed[key];
-    }
-
-    function setAllowed(address key, uint256 value) public onlyOwner {
-        _allowed[key] = value;
+    function setAllowed(address from, address to, uint256 value) public onlyOwner {
+        allowed[from][to] = value;
     }
 }

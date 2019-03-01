@@ -82,6 +82,12 @@ func (s *ReserveDollarSuite) assertBalance(address common.Address, amount *big.I
 	s.Equal(amount.String(), balance.String()) // assert.Equal can mis-compare big.Ints, so compare strings instead
 }
 
+func (s *ReserveDollarSuite) assertAllowance(owner, spender common.Address, amount *big.Int) {
+	allowance, err := s.reserve.Allowance(nil, owner, spender)
+	s.NoError(err)
+	s.Equal(amount.String(), allowance.String())
+}
+
 func (s *ReserveDollarSuite) assertTotalSupply(amount *big.Int) {
 	totalSupply, err := s.reserve.TotalSupply(nil)
 	s.NoError(err)
@@ -274,6 +280,87 @@ func (s *ReserveDollarSuite) TestTransferExceedsFunds() {
 	s.assertBalance(recipient, common.Big0)
 	s.assertBalance(s.account[0].address(), common.Big0)
 	s.assertTotalSupply(smallAmount)
+}
+
+func (s *ReserveDollarSuite) TestApprove() {
+	owner := s.account[1]
+	spender := s.account[2]
+	amount := big.NewInt(53)
+
+	// owner approves spender
+	s.requireTx(s.reserve.Approve(signer(owner), spender.address(), amount))
+
+	// approval should be reflected in allowance
+	s.assertAllowance(owner.address(), spender.address(), amount)
+
+	// shouldn't be symmetric
+	s.assertAllowance(spender.address(), owner.address(), common.Big0)
+
+	// balances shouldn't change
+	s.assertBalance(owner.address(), common.Big0)
+	s.assertBalance(spender.address(), common.Big0)
+	s.assertTotalSupply(common.Big0)
+}
+
+func (s *ReserveDollarSuite) TestIncreaseAllowance() {
+	owner := s.account[1]
+	spender := s.account[2]
+	amount := big.NewInt(2000)
+
+	// owner approves spender through increaseAllowance
+	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), amount))
+
+	// approval should be reflected in allowance
+	s.assertAllowance(owner.address(), spender.address(), amount)
+
+	// shouldn't be symmetric
+	s.assertAllowance(spender.address(), owner.address(), common.Big0)
+
+	// balances shouldn't change
+	s.assertBalance(owner.address(), common.Big0)
+	s.assertBalance(spender.address(), common.Big0)
+	s.assertTotalSupply(common.Big0)
+}
+
+func maxUint256() *big.Int {
+	z := big.NewInt(1)
+	z = z.Lsh(z, 256)
+	z = z.Sub(z, common.Big1)
+	return z
+}
+
+func (s *ReserveDollarSuite) TestIncreaseAllowanceOverflow() {
+	owner := s.account[1]
+	spender := s.account[2]
+	initialAmount := big.NewInt(10)
+
+	// owner approves spender for initial amount
+	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), initialAmount))
+
+	// owner should not be able to increase approval high enough to overflow a uint256
+	s.requireTxFails(s.reserve.IncreaseAllowance(signer(owner), spender.address(), maxUint256()))
+}
+
+func (s *ReserveDollarSuite) TestDecreaseAllowance() {
+	owner := s.account[1]
+	spender := s.account[2]
+	initialAmount := big.NewInt(10)
+	decrease := big.NewInt(6)
+	final := big.NewInt(4)
+
+	// owner approves spender for initial amount
+	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), initialAmount))
+
+	// owner decreases allowance
+	s.requireTx(s.reserve.DecreaseAllowance(signer(owner), spender.address(), decrease))
+
+	// allowance should be as we expect
+	s.assertAllowance(owner.address(), spender.address(), final)
+
+	// balances shouldn't change
+	s.assertBalance(owner.address(), common.Big0)
+	s.assertBalance(spender.address(), common.Big0)
+	s.assertTotalSupply(common.Big0)
 }
 
 /*
