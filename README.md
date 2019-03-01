@@ -16,4 +16,6 @@ TODO: overview of the Reserve Dollar
 
 # Running tests
 
-`make test`
+Test with `make test`.
+
+To get a coverage report, run `make coverage`. Note that it has a few obvious false negatives, like the ReserveDollar constructor, interface definitions, and the `_;` line in modifiers.
