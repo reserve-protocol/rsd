@@ -99,7 +99,7 @@ contract ReserveDollar is IERC20 {
     }
 
     modifier whenNotPaused() {
-        require(!paused);
+        require(!paused, "paused");
         _;
     }
 
@@ -263,7 +263,7 @@ contract ReserveDollar is IERC20 {
      * @param value The amount to be transferred.
      */
     function _transfer(address from, address to, uint256 value) internal {
-        require(to != address(0));
+        require(to != address(0), "can't transfer to address zero");
 
         data.subBalance(from, value);
         data.addBalance(to, value);
@@ -278,7 +278,7 @@ contract ReserveDollar is IERC20 {
      * @param value The amount that will be created.
      */
     function mint(address account, uint256 value) public whenNotPaused onlyRole(minter) {
-        require(account != address(0));
+        require(account != address(0), "can't mint to address zero");
 
         _totalSupply = _totalSupply.add(value);
         data.addBalance(account, value);
@@ -292,7 +292,7 @@ contract ReserveDollar is IERC20 {
      * @param value The amount that will be burnt.
      */
     function _burn(address account, uint256 value) internal {
-        require(account != address(0));
+        require(account != address(0), "can't burn from address zero");
 
         _totalSupply = _totalSupply.sub(value);
         data.subBalance(account, value);
@@ -301,15 +301,15 @@ contract ReserveDollar is IERC20 {
 
     /**
      * @dev Approve an address to spend another addresses' tokens.
-     * @param addr The address that owns the tokens.
+     * @param _owner The address that owns the tokens.
      * @param spender The address that will spend the tokens.
      * @param value The number of tokens that can be spent.
      */
-    function _approve(address addr, address spender, uint256 value) internal {
-        require(spender != address(0));
-        require(addr != address(0));
+    function _approve(address _owner, address spender, uint256 value) internal {
+        require(spender != address(0), "spender cannot be address zero");
+        require(_owner != address(0), "_owner cannot be address zero");
 
-        data.setAllowed(addr, spender, value);
-        emit Approval(addr, spender, value);
+        data.setAllowed(_owner, spender, value);
+        emit Approval(_owner, spender, value);
     }
 }
