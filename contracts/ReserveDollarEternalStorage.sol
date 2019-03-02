@@ -79,4 +79,12 @@ contract ReserveDollarEternalStorage {
     function setAllowed(address from, address to, uint256 value) public onlyOwner {
         allowed[from][to] = value;
     }
+
+    // frozenTime
+
+    mapping (address => uint256) public frozenTime;
+
+    function setFrozenTime(address who, uint256 time) public onlyOwner {
+        frozenTime[who] = time;
+    }
 }
