@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"math/big"
@@ -52,8 +53,6 @@ func (s *TestSuite) requireTxFails(tx *types.Transaction, err error) {
 		"failed to estimate gas needed: gas required exceeds allowance or always failing transaction" {
 		return
 	}
-
-	fmt.Printf("%q\n", err.Error())
 
 	s._requireTxStatus(tx, err, types.ReceiptStatusFailed)
 }
@@ -129,6 +128,27 @@ func (s *TestSuite) createFastNode() {
 			8e6, // roughly same order of magnitude as mainnet
 		),
 	}
+}
+
+func (s *TestSuite) setup() {
+	// The first few keys from the following well-known mnemonic used by 0x:
+	//	concert load couple harbor equip island argue ramp clarify fence smart topic
+	keys := []string{
+		"f2f48ee19680706196e2e339e5da3491186e0c4c5030670656b0e0164837257d",
+		"5d862464fe9303452126c8bc94274b8c5f9874cbd219789b3eb2128075a76f72",
+		"df02719c4df8b9b8ac7f551fcb5d9ef48fa27eef7a66453879f4d8fdc6e78fb1",
+		"ff12e391b79415e941a94de3bf3a9aee577aed0731e297d5cfa0b8a1e02fa1d0",
+		"752dd9cf65e68cfaba7d60225cbdbc1f4729dd5e5507def72815ed0d8abc6249",
+		"efb595a0178eb79a8df953f87c5148402a224cdf725e88c0146727c6aceadccd",
+	}
+	s.account = make([]account, len(keys))
+	for i, key := range keys {
+		b, err := hex.DecodeString(key)
+		s.Require().NoError(err)
+		s.account[i].key, err = crypto.ToECDSA(b)
+		s.Require().NoError(err)
+	}
+	s.signer = signer(s.account[0])
 }
 
 type backend struct {
