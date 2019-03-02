@@ -59,7 +59,7 @@ contract MintAndBurnAdmin {
     /**
      * @dev Throw if the given proposal either does not exist or does not match addr, value, and isMint.
      */
-    function _requireMatchingProposal(uint256 index, address addr, uint256 value, bool isMint) private {
+    function requireMatchingProposal(uint256 index, address addr, uint256 value, bool isMint) view private {
         require(index < nextProposal, "no such proposal");
         require(proposals[index].addr == addr, "addr mismatched");
         require(proposals[index].value == value, "value mismatched");
@@ -71,7 +71,7 @@ contract MintAndBurnAdmin {
      */
     function cancel(uint256 index, address addr, uint256 value, bool isMint) public {
         require(msg.sender == admin, "must be admin");
-        _requireMatchingProposal(index, addr, value, isMint);
+        requireMatchingProposal(index, addr, value, isMint);
         require(!completed[index], "already completed");
 
         // Cancel proposal.
@@ -88,11 +88,15 @@ contract MintAndBurnAdmin {
     function confirm(uint256 index, address addr, uint256 value, bool isMint) public {
         // Ensure proposal is authorized.
         require(msg.sender == admin, "must be admin");
-        _requireMatchingProposal(index, addr, value, isMint);
+        requireMatchingProposal(index, addr, value, isMint);
 
         // See commentary above about using `now`.
         require(proposals[index].time < now, "too early"); // solium-disable-line security/no-block-members
         require(!completed[index], "already completed");
+
+        // Record action.
+        completed[index] = true;
+        emit ProposalConfirmed(index, addr, value, isMint);
 
         // Proceed with action.
         if (proposals[index].isMint) {
@@ -100,10 +104,5 @@ contract MintAndBurnAdmin {
         } else {
             reserve.burnFrom(addr, value);
         }
-
-        // Record completion.
-        completed[index] = true;
-
-        emit ProposalConfirmed(index, addr, value, isMint);
     }
 }
