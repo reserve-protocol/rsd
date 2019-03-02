@@ -5,3 +5,6 @@ abi/bindings
 artifacts/
 node_modules/
 tests/coverage/
+
+.*~
+#*#

@@ -63,52 +63,44 @@ contract ReserveDollar is IERC20 {
     }
 
     /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(msg.sender == owner, "onlyOwner");
-        _;
-    }
-
-    /**
      * @dev Throws if called by any account other than role.
      */
-    modifier onlyRole(address role) {
-        require(msg.sender == role, "onlyRole");
+    modifier only(address role) {
+        require(msg.sender == role, "unauthorized (only role)");
         _;
     }
 
     /**
      * @dev Throws if called by any account other than role or owner.
      */
-    modifier roleChange(address roleHolder) {
-        require(msg.sender == owner || msg.sender == roleHolder, "unauthorized");
+    modifier onlyOwnerOr(address role) {
+        require(msg.sender == owner || msg.sender == roleHolder, "unauthorized (only owner or role)");
         _;
     }
 
-    function changeMinter(address newMinter) public roleChange(minter) {
+    function changeMinter(address newMinter) public onlyOwnerOr(minter) {
         minter = newMinter;
         emit MinterChanged(newMinter);
     }
 
-    function changePauser(address newPauser) public roleChange(pauser) {
+    function changePauser(address newPauser) public onlyOwnerOr(pauser) {
         pauser = newPauser;
         emit PauserChanged(newPauser);
     }
 
-    function changeFreezer(address newFreezer) public roleChange(freezer) {
+    function changeFreezer(address newFreezer) public onlyOwnerOr(freezer) {
         freezer = newFreezer;
         emit FreezerChanged(newFreezer);
     }
 
-    function changeOwner(address newOwner) public roleChange(owner) {
+    function changeOwner(address newOwner) public only(owner) {
         owner = newOwner;
         emit OwnerChanged(newOwner);
     }
 
     event NameChanged(string newName, string newSymbol);
 
-    function changeName(string memory newName, string memory newSymbol) public onlyOwner {
+    function changeName(string memory newName, string memory newSymbol) public only(owner) {
         name = newName;
         symbol = newSymbol;
         emit NameChanged(newName, newSymbol);
@@ -117,12 +109,12 @@ contract ReserveDollar is IERC20 {
     event Paused(address account);
     event Unpaused(address account);
 
-    function pause() public onlyRole(pauser) {
+    function pause() public only(pauser) {
         paused = true;
         emit Paused(pauser);
     }
 
-    function unpause() public onlyRole(pauser) {
+    function unpause() public only(pauser) {
         paused = false;
         emit Unpaused(pauser);
     }
@@ -136,13 +128,13 @@ contract ReserveDollar is IERC20 {
     event Unfrozen(address indexed freezer, address indexed account);
     event Wiped(address indexed freezer, address indexed wiped);
 
-    function freeze(address who) public onlyRole(freezer) {
+    function freeze(address who) public only(freezer) {
         require(data.frozenTime(who) == 0, "account already frozen");
         data.setFrozenTime(who, now); // solium-disable-line security/no-block-members
         emit Frozen(freezer, who);
     }
 
-    function unfreeze(address who) public onlyRole(freezer) {
+    function unfreeze(address who) public only(freezer) {
         require(data.frozenTime(who) > 0, "account not frozen");
         data.setFrozenTime(who, 0);
         emit Unfrozen(freezer, who);
@@ -153,7 +145,7 @@ contract ReserveDollar is IERC20 {
         _;
     }
 
-    function wipe(address who) public onlyRole(freezer) {
+    function wipe(address who) public only(freezer) {
         require(data.frozenTime(who) > 0, "cannot wipe unfrozen account");
         require(data.frozenTime(who) + 4 weeks < now, "cannot wipe frozen account before 4 weeks");
         _burn(who, data.balance(who));
@@ -307,7 +299,7 @@ contract ReserveDollar is IERC20 {
      * @param account The account that will receive the created tokens.
      * @param value The amount that will be created.
      */
-    function mint(address account, uint256 value) public whenNotPaused onlyRole(minter) {
+    function mint(address account, uint256 value) public whenNotPaused only(minter) {
         require(account != address(0), "can't mint to address zero");
 
         _totalSupply = _totalSupply.add(value);
@@ -323,7 +315,7 @@ contract ReserveDollar is IERC20 {
      * @param account The account whose tokens will be burnt.
      * @param value The amount that will be burnt.
      */
-    function burnFrom(address account, uint256 value) public whenNotPaused onlyRole(minter) {
+    function burnFrom(address account, uint256 value) public whenNotPaused only(minter) {
         _burn(account, value);
         _approve(account, msg.sender, data.allowed(account, msg.sender).sub(value));
     }
