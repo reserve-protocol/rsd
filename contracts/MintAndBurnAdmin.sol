@@ -10,7 +10,7 @@ import "./ReserveDollar.sol";
  */
 contract MintAndBurnAdmin {
     ReserveDollar public reserve;
-    uint256 public delay = 12 hours;
+    uint256 public constant delay = 12 hours;
     address public admin;
 
     constructor(address reserveDollar) public {
