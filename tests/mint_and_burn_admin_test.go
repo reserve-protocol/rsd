@@ -92,5 +92,4 @@ func (s *MintAndBurnAdminSuite) TestAdminCanMint() {
 	// Trying to confirm a second time should fail.
 	_, err = s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true)
 	s.Error(err)
-
 }

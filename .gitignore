@@ -1,5 +1,6 @@
 abi/*.go
 !abi/generate.go
+abi/bindings
 
 artifacts/
 node_modules/

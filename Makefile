@@ -1,11 +1,12 @@
-bindings:
+abi/bindings: contracts/*.sol abi/generate.go
 	go run abi/generate.go
+	touch abi/bindings
 
-test: bindings
+test: abi/bindings
 	go test ./tests
 
 export REPO_DIR = $(shell pwd)
-coverage: bindings
+coverage: abi/bindings
 	go test -v -cover ./tests
 	open tests/coverage/index.html
 
