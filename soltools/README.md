@@ -3,4 +3,6 @@ soltools
 
 Go wrappers for 0x's suite of solidity tools.
 
-This is used to get reports of Solidity code coverage from tests written in Go. This library provides an interface through which the Go tests can send Ethereum RPC requests through [sol-trace](https://sol-trace.com/) and then print a coverage report from [sol-coverage](https://sol-coverage.com/).
+We use [sol-coverage](https://sol-coverage.com/) to get coverage reports for our Solidity contracts. sol-coverage is written in JavaScript, and our tests are written in Go, so we need a way to bridge between the two languages. This package provides that bridge.
+
+The bridge works by running the relevant 0x libraries in a node.js process, and communicating with the process using HTTP requests over localhost.

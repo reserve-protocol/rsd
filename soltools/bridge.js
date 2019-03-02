@@ -68,7 +68,6 @@ const rpcs = {
 const port = 3000;
 const server = http.createServer(async (request, response) => {
   try {
-
     // Simple RPC endpoint: requests are JSON-formatted as {"method": <method>, "data": <arbitrary JSON argument for method>}.
     const content = await readFull(request);
     const {method, data} = JSON.parse(content);
