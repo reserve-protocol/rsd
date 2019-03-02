@@ -66,7 +66,7 @@ contract ReserveDollar is IERC20 {
      * @dev Throws if called by any account other than role.
      */
     modifier only(address role) {
-        require(msg.sender == role, "unauthorized (only role)");
+        require(msg.sender == role, "unauthorized");
         _;
     }
 
@@ -74,7 +74,7 @@ contract ReserveDollar is IERC20 {
      * @dev Throws if called by any account other than role or owner.
      */
     modifier onlyOwnerOr(address role) {
-        require(msg.sender == owner || msg.sender == roleHolder, "unauthorized (only owner or role)");
+        require(msg.sender == owner || msg.sender == roleHolder, "unauthorized and not owner");
         _;
     }
 
@@ -106,6 +106,7 @@ contract ReserveDollar is IERC20 {
         emit NameChanged(newName, newSymbol);
     }
 
+
     event Paused(address account);
     event Unpaused(address account);
 
@@ -124,6 +125,7 @@ contract ReserveDollar is IERC20 {
         _;
     }
 
+    
     event Frozen(address indexed freezer, address indexed account);
     event Unfrozen(address indexed freezer, address indexed account);
     event Wiped(address indexed freezer, address indexed wiped);
@@ -140,7 +142,7 @@ contract ReserveDollar is IERC20 {
         emit Unfrozen(freezer, who);
     }
 
-    modifier notFrozen(address account) {
+    modifier whenNotFrozen(address account) {
         require(data.frozenTime(account) == 0, "account frozen");
         _;
     }
@@ -151,6 +153,7 @@ contract ReserveDollar is IERC20 {
         _burn(who, data.balance(who));
         emit Wiped(freezer, who);
     }
+
 
     /**
      * @dev Total number of tokens in existence
@@ -186,8 +189,8 @@ contract ReserveDollar is IERC20 {
     function transfer(address to, uint256 value)
         public
         whenNotPaused
-        notFrozen(msg.sender)
-        notFrozen(to)
+        whenNotFrozen(msg.sender)
+        whenNotFrozen(to)
         returns (bool)
     {
         _transfer(msg.sender, to, value);
@@ -207,8 +210,8 @@ contract ReserveDollar is IERC20 {
     function approve(address spender, uint256 value)
         public
         whenNotPaused
-        notFrozen(msg.sender)
-        notFrozen(spender)
+        whenNotFrozen(msg.sender)
+        whenNotFrozen(spender)
         returns (bool)
     {
         _approve(msg.sender, spender, value);
@@ -226,9 +229,9 @@ contract ReserveDollar is IERC20 {
     function transferFrom(address from, address to, uint256 value)
         public
         whenNotPaused
-        notFrozen(msg.sender)
-        notFrozen(from)
-        notFrozen(to)
+        whenNotFrozen(msg.sender)
+        whenNotFrozen(from)
+        whenNotFrozen(to)
         returns (bool)
     {
         _transfer(from, to, value);
@@ -249,8 +252,8 @@ contract ReserveDollar is IERC20 {
     function increaseAllowance(address spender, uint256 addedValue)
         public
         whenNotPaused
-        notFrozen(msg.sender)
-        notFrozen(spender)
+        whenNotFrozen(msg.sender)
+        whenNotFrozen(spender)
         returns (bool)
     {
         _approve(msg.sender, spender, data.allowed(msg.sender, spender).add(addedValue));
@@ -270,8 +273,8 @@ contract ReserveDollar is IERC20 {
     function decreaseAllowance(address spender, uint256 subtractedValue)
         public
         whenNotPaused
-        notFrozen(msg.sender)
-        notFrozen(spender)
+        whenNotFrozen(msg.sender)
+        whenNotFrozen(spender)
         returns (bool)
     {
         _approve(msg.sender, spender, data.allowed(msg.sender, spender).sub(subtractedValue));
