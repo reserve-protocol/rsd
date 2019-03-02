@@ -1,7 +1,7 @@
 abi/bindings: contracts/*.sol abi/generate.go
 	npx sol-compiler
 	go run abi/generate.go
-	touch abi/bindings
+	@echo "placeholder output file for 'make abi/bindings'" > abi/bindings
 
 test: abi/bindings
 	go test ./tests
