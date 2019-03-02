@@ -130,7 +130,7 @@ contract ReserveDollar is IERC20 {
     }
 
     modifier whenNotPaused() {
-        require(!paused, "paused");
+        require(!paused, "contract is paused");
         _;
     }
 
