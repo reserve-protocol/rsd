@@ -96,3 +96,28 @@ func (s *MintAndBurnAdminSuite) TestAdminCanMint() {
 	_, err = s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true)
 	s.Error(err)
 }
+
+func (s *MintAndBurnAdminSuite) TestAdminCanCancelMinting() {
+	recipient := common.BigToAddress(common.Big1)
+	amount := big.NewInt(100)
+
+	// Propose a new mint.
+	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))
+
+	// And then cancel that minting.
+	s.requireTx(s.adminContract.Cancel(s.adminSigner, common.Big0, recipient, amount, true))
+
+	// Advance time.
+	s.Require().NoError(s.node.(backend).AdjustTime(14 * time.Hour))
+
+	// Trying to confirm it should now fail, even though time has advanced.
+	_, err := s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true)
+	s.Require().Error(err)
+
+	// The mint should not have happened.
+	s.assertBalance(recipient, common.Big0)
+
+	// Trying to confirm a second time should fail.
+	_, err = s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true)
+	s.Error(err)
+}

@@ -30,6 +30,7 @@ contract MintAndBurnAdmin {
 
     event ProposalCreated(uint256 index, address addr, uint256 value, bool isMint, uint256 delayUntil);
     event ProposalConfirmed(uint256 index, address addr, uint256 value, bool isMint);
+    event ProposalCancelled(uint256 index, address addr, uint256 value, bool isMint);
 
     /**
      * @dev Propose a new mint or burn, which can be confirmed after 12 hours.
@@ -56,6 +57,29 @@ contract MintAndBurnAdmin {
     }
 
     /**
+     * @dev Throw if the given proposal either does not exist or does not match addr, value, and isMint.
+     */
+    function _requireMatchingProposal(uint256 index, address addr, uint256 value, bool isMint) private {
+        require(index < nextProposal, "no such proposal");
+        require(proposals[index].addr == addr, "addr mismatched");
+        require(proposals[index].value == value, "value mismatched");
+        require(proposals[index].isMint == isMint, "isMint mismatched");
+    }
+
+    /**
+     * @dev Cancel a proposed mint or burn.
+     */
+    function cancel(uint256 index, address addr, uint256 value, bool isMint) public {
+        require(msg.sender == admin, "must be admin");
+        _requireMatchingProposal(index, addr, value, isMint);
+        require(!completed[index], "already completed");
+
+        // Cancel proposal.
+        completed[index] = true;
+        emit ProposalCancelled(index, addr, value, isMint);
+    }
+
+    /**
      * @dev Confirm a proposed mint or burn.
      *
      * If enough time has passed since the proposal, the owner
@@ -64,15 +88,11 @@ contract MintAndBurnAdmin {
     function confirm(uint256 index, address addr, uint256 value, bool isMint) public {
         // Ensure proposal is authorized.
         require(msg.sender == admin, "must be admin");
-        require(index < nextProposal, "no such proposal");
+        _requireMatchingProposal(index, addr, value, isMint);
+
         // See commentary above about using `now`.
         require(proposals[index].time < now, "too early"); // solium-disable-line security/no-block-members
         require(!completed[index], "already completed");
-
-        // Sanity-check inputs.
-        require(proposals[index].addr == addr, "addr mismatched");
-        require(proposals[index].value == value, "value mismatched");
-        require(proposals[index].isMint == isMint, "isMint mismatched");
 
         // Proceed with action.
         if (proposals[index].isMint) {
