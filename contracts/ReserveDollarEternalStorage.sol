@@ -68,6 +68,10 @@ contract ReserveDollarEternalStorage {
         balance[key] = balance[key].sub(value);
     }
 
+    function setBalance(address key, uint256 value) public onlyOwner {
+        balance[key] = value;
+    }
+
     // allowed
 
     mapping (address => mapping (address => uint256)) public allowed;
