@@ -74,7 +74,7 @@ contract ReserveDollar is IERC20 {
      * @dev Throws if called by any account other than role or owner.
      */
     modifier onlyOwnerOr(address role) {
-        require(msg.sender == owner || msg.sender == roleHolder, "unauthorized and not owner");
+        require(msg.sender == owner || msg.sender == role, "unauthorized and not owner");
         _;
     }
 
@@ -97,6 +97,7 @@ contract ReserveDollar is IERC20 {
         owner = newOwner;
         emit OwnerChanged(newOwner);
     }
+
 
     event NameChanged(string newName, string newSymbol);
 
