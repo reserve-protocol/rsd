@@ -28,23 +28,29 @@ contract MintAndBurnAdmin {
     mapping (uint256 => Proposal) public proposals;
     mapping (uint256 => bool) public completed;
 
-    event ProposalCreated(uint256 index, address addr, uint256 value, bool isMint, uint256 time);
-    event ProposalConfirmed(uint256 index, address addr, uint256 value, bool isMint, uint256 time);
+    event ProposalCreated(uint256 index, address addr, uint256 value, bool isMint, uint256 delayUntil);
+    event ProposalConfirmed(uint256 index, address addr, uint256 value, bool isMint);
 
     /**
      * @dev Propose a new mint or burn, which can be confirmed after 12 hours.
      */
     function propose(address addr, uint256 value, bool isMint) public {
-        require(msg.sender == admin);
+        require(msg.sender == admin, "must be admin");
+
+        // Delay by at least 12 hours.
+        // We are relying on block.timestamp for this, and aware of the possibility of its
+        // manipulation by miners. But given the in-protocol bounds on the change in block.timestamp
+        // and the way we are using it, we are satisfied with this choice.
+        uint256 delayUntil = now + delay; // solium-disable-line security/no-block-members
 
         proposals[nextProposal] = Proposal({
             addr: addr,
             value: value,
             isMint: isMint,
-            time: now + delay
+            time: delayUntil
         });
 
-        emit ProposalCreated(nextProposal, addr, value, isMint, now + delay);
+        emit ProposalCreated(nextProposal, addr, value, isMint, delayUntil);
 
         nextProposal++;
     }
@@ -57,9 +63,10 @@ contract MintAndBurnAdmin {
      */
     function confirm(uint256 index, address addr, uint256 value, bool isMint) public {
         // Ensure proposal is authorized.
-        require(msg.sender == admin);
+        require(msg.sender == admin, "must be admin");
         require(index < nextProposal, "no such proposal");
-        require(proposals[index].time < now, "too early");
+        // See commentary above about using `now`.
+        require(proposals[index].time < now, "too early"); // solium-disable-line security/no-block-members
         require(!completed[index], "already completed");
 
         // Sanity-check inputs.
@@ -77,6 +84,6 @@ contract MintAndBurnAdmin {
         // Record completion.
         completed[index] = true;
 
-        emit ProposalConfirmed(index, addr, value, isMint, now + delay);
+        emit ProposalConfirmed(index, addr, value, isMint);
     }
 }
