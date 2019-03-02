@@ -1,6 +1,8 @@
 //+build ignore
 
 // This command generates Go bindings for the Reserve Dollar smart contracts.
+//
+// It is intended to be invoked with `make abi/bindings` at the root of the repo.
 
 package main
 
@@ -9,29 +11,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 )
 
 func main() {
-	// Run sol-compiler.
-	{
-		cmd := exec.Command("npx", "sol-compiler")
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		check(cmd.Run(), "running sol-compiler")
-	}
-
 	// Generate bindings from the compiled artifacts.
-	check(filepath.Walk("artifacts", func(path string, info os.FileInfo, err error) error {
-		check(err, "walking artifacts/ directory")
-
-		if info.IsDir() {
-			return nil
-		}
-
+	artifactPaths, _ := filepath.Glob(filepath.FromSlash("artifacts/*.json"))
+	for _, path := range artifactPaths {
 		// Read artifact file.
 		b, err := ioutil.ReadFile(path)
 		check(err, "reading %q", path)
@@ -69,9 +57,7 @@ func main() {
 			),
 			"writing bindings to disk",
 		)
-
-		return nil
-	}), "filepath.Walk")
+	}
 }
 
 // check exits the program with a formatted error message if err is non-nil.
