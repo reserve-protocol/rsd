@@ -35,7 +35,7 @@ contract MintAndBurnAdmin {
     /**
      * @dev Propose a new mint or burn, which can be confirmed after 12 hours.
      */
-    function propose(address addr, uint256 value, bool isMint) public {
+    function propose(address addr, uint256 value, bool isMint) external {
         require(msg.sender == admin, "must be admin");
 
         // Delay by at least 12 hours.
@@ -69,7 +69,7 @@ contract MintAndBurnAdmin {
     /**
      * @dev Cancel a proposed mint or burn.
      */
-    function cancel(uint256 index, address addr, uint256 value, bool isMint) public {
+    function cancel(uint256 index, address addr, uint256 value, bool isMint) external {
         require(msg.sender == admin, "must be admin");
         requireMatchingProposal(index, addr, value, isMint);
         require(!completed[index], "already completed");
@@ -85,7 +85,7 @@ contract MintAndBurnAdmin {
      * If enough time has passed since the proposal, the owner
      * of the admin contract can confirm it.
      */
-    function confirm(uint256 index, address addr, uint256 value, bool isMint) public {
+    function confirm(uint256 index, address addr, uint256 value, bool isMint) external {
         // Ensure proposal is authorized.
         require(msg.sender == admin, "must be admin");
         requireMatchingProposal(index, addr, value, isMint);

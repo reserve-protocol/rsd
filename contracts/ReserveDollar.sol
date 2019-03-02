@@ -78,22 +78,22 @@ contract ReserveDollar is IERC20 {
         _;
     }
 
-    function changeMinter(address newMinter) public onlyOwnerOr(minter) {
+    function changeMinter(address newMinter) external onlyOwnerOr(minter) {
         minter = newMinter;
         emit MinterChanged(newMinter);
     }
 
-    function changePauser(address newPauser) public onlyOwnerOr(pauser) {
+    function changePauser(address newPauser) external onlyOwnerOr(pauser) {
         pauser = newPauser;
         emit PauserChanged(newPauser);
     }
 
-    function changeFreezer(address newFreezer) public onlyOwnerOr(freezer) {
+    function changeFreezer(address newFreezer) external onlyOwnerOr(freezer) {
         freezer = newFreezer;
         emit FreezerChanged(newFreezer);
     }
 
-    function changeOwner(address newOwner) public only(owner) {
+    function changeOwner(address newOwner) external only(owner) {
         owner = newOwner;
         emit OwnerChanged(newOwner);
     }
@@ -111,12 +111,12 @@ contract ReserveDollar is IERC20 {
     event Paused(address account);
     event Unpaused(address account);
 
-    function pause() public only(pauser) {
+    function pause() external only(pauser) {
         paused = true;
         emit Paused(pauser);
     }
 
-    function unpause() public only(pauser) {
+    function unpause() external only(pauser) {
         paused = false;
         emit Unpaused(pauser);
     }
@@ -131,13 +131,13 @@ contract ReserveDollar is IERC20 {
     event Unfrozen(address indexed freezer, address indexed account);
     event Wiped(address indexed freezer, address indexed wiped);
 
-    function freeze(address who) public only(freezer) {
+    function freeze(address who) external only(freezer) {
         require(data.frozenTime(who) == 0, "account already frozen");
         data.setFrozenTime(who, now); // solium-disable-line security/no-block-members
         emit Frozen(freezer, who);
     }
 
-    function unfreeze(address who) public only(freezer) {
+    function unfreeze(address who) external only(freezer) {
         require(data.frozenTime(who) > 0, "account not frozen");
         data.setFrozenTime(who, 0);
         emit Unfrozen(freezer, who);
@@ -148,7 +148,7 @@ contract ReserveDollar is IERC20 {
         _;
     }
 
-    function wipe(address who) public only(freezer) {
+    function wipe(address who) external only(freezer) {
         require(data.frozenTime(who) > 0, "cannot wipe unfrozen account");
         require(data.frozenTime(who) + 4 weeks < now, "cannot wipe frozen account before 4 weeks");
         _burn(who, data.balance(who));
@@ -159,7 +159,7 @@ contract ReserveDollar is IERC20 {
     /**
      * @dev Total number of tokens in existence
      */
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() external view returns (uint256) {
         return _totalSupply;
     }
 
@@ -168,7 +168,7 @@ contract ReserveDollar is IERC20 {
      * @param _owner The address to query the balance of.
      * @return An uint256 representing the amount owned by the passed address.
      */
-    function balanceOf(address _owner) public view returns (uint256) {
+    function balanceOf(address _owner) external view returns (uint256) {
         return data.balance(_owner);
     }
 
@@ -178,7 +178,7 @@ contract ReserveDollar is IERC20 {
      * @param spender address The address which will spend the funds.
      * @return A uint256 specifying the amount of tokens still available for the spender.
      */
-    function allowance(address _owner, address spender) public view returns (uint256) {
+    function allowance(address _owner, address spender) external view returns (uint256) {
         return data.allowed(_owner, spender);
     }
 
@@ -188,7 +188,7 @@ contract ReserveDollar is IERC20 {
      * @param value The amount to be transferred.
      */
     function transfer(address to, uint256 value)
-        public
+        external
         notPaused
         notFrozen(msg.sender)
         notFrozen(to)
@@ -209,7 +209,7 @@ contract ReserveDollar is IERC20 {
      * @param value The amount of tokens to be spent.
      */
     function approve(address spender, uint256 value)
-        public
+        external
         notPaused
         notFrozen(msg.sender)
         notFrozen(spender)
@@ -228,7 +228,7 @@ contract ReserveDollar is IERC20 {
      * @param value uint256 the amount of tokens to be transferred
      */
     function transferFrom(address from, address to, uint256 value)
-        public
+        external
         notPaused
         notFrozen(msg.sender)
         notFrozen(from)
@@ -251,7 +251,7 @@ contract ReserveDollar is IERC20 {
      * @param addedValue The amount of tokens to increase the allowance by.
      */
     function increaseAllowance(address spender, uint256 addedValue)
-        public
+        external
         notPaused
         notFrozen(msg.sender)
         notFrozen(spender)
@@ -272,7 +272,7 @@ contract ReserveDollar is IERC20 {
      * @param subtractedValue The amount of tokens to decrease the allowance by.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
+        external
         notPaused
         notFrozen(msg.sender)
         notFrozen(spender)
@@ -303,7 +303,7 @@ contract ReserveDollar is IERC20 {
      * @param account The account that will receive the created tokens.
      * @param value The amount that will be created.
      */
-    function mint(address account, uint256 value) public notPaused only(minter) {
+    function mint(address account, uint256 value) external notPaused only(minter) {
         require(account != address(0), "can't mint to address zero");
 
         _totalSupply = _totalSupply.add(value);
@@ -319,7 +319,7 @@ contract ReserveDollar is IERC20 {
      * @param account The account whose tokens will be burnt.
      * @param value The amount that will be burnt.
      */
-    function burnFrom(address account, uint256 value) public notPaused only(minter) {
+    function burnFrom(address account, uint256 value) external notPaused only(minter) {
         _burn(account, value);
         _approve(account, msg.sender, data.allowed(account, msg.sender).sub(value));
     }

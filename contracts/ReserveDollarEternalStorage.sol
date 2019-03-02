@@ -43,7 +43,7 @@ contract ReserveDollarEternalStorage {
      * @dev Allows the current owner to transfer control of the contract to a newOwner.
      * @param newOwner The address to transfer ownership to.
      */
-    function transferOwnership(address newOwner) public onlyOwner {
+    function transferOwnership(address newOwner) external onlyOwner {
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
@@ -60,15 +60,15 @@ contract ReserveDollarEternalStorage {
 
     mapping (address => uint256) public balance;
 
-    function addBalance(address key, uint256 value) public onlyOwner {
+    function addBalance(address key, uint256 value) external onlyOwner {
         balance[key] = balance[key].add(value);
     }
 
-    function subBalance(address key, uint256 value) public onlyOwner {
+    function subBalance(address key, uint256 value) external onlyOwner {
         balance[key] = balance[key].sub(value);
     }
 
-    function setBalance(address key, uint256 value) public onlyOwner {
+    function setBalance(address key, uint256 value) external onlyOwner {
         balance[key] = value;
     }
 
@@ -76,7 +76,7 @@ contract ReserveDollarEternalStorage {
 
     mapping (address => mapping (address => uint256)) public allowed;
 
-    function setAllowed(address from, address to, uint256 value) public onlyOwner {
+    function setAllowed(address from, address to, uint256 value) external onlyOwner {
         allowed[from][to] = value;
     }
 
@@ -84,7 +84,7 @@ contract ReserveDollarEternalStorage {
 
     mapping (address => uint256) public frozenTime;
 
-    function setFrozenTime(address who, uint256 time) public onlyOwner {
+    function setFrozenTime(address who, uint256 time) external onlyOwner {
         frozenTime[who] = time;
     }
 }
