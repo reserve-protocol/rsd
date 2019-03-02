@@ -1,25 +1,16 @@
-package reserve_test
+package tests
 
 import (
-	"context"
-	"crypto/ecdsa"
-	"encoding/hex"
 	"fmt"
-	"math"
 	"math/big"
+	"os/exec"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/reserve-protocol/reserve-dollar/abi"
+	"github.com/reserve-protocol/reserve-dollar/soltools"
 )
 
 func TestReserveDollar(t *testing.T) {
@@ -27,14 +18,7 @@ func TestReserveDollar(t *testing.T) {
 }
 
 type ReserveDollarSuite struct {
-	suite.Suite
-
-	account []account
-	signer  *bind.TransactOpts
-	node    backend
-	reserve *abi.ReserveDollar
-	assert  *assert.Assertions
-	require *require.Assertions
+	TestSuite
 }
 
 var (
@@ -46,122 +30,19 @@ var (
 	_ suite.TearDownAllSuite = &ReserveDollarSuite{}
 )
 
-// requireTx requires that a transaction is successfully mined and does
-// not revert. It also takes an extra error argument, and checks that the
-// error is nil. This signature allows the function to directly wrap our
-// abigen'd mutator calls.
-func (s *ReserveDollarSuite) requireTx(tx *types.Transaction, err error) {
-	_requireTxStatus(s, tx, err, types.ReceiptStatusSuccessful)
-}
-
-// requireTxFails is like requireTx, but it requires that the transaction either
-// reverts or is not successfully made in the first place due to gas estimation
-// failing.
-func (s *ReserveDollarSuite) requireTxFails(tx *types.Transaction, err error) {
-	if err != nil && err.Error() ==
-		"failed to estimate gas needed: gas required exceeds allowance or always failing transaction" {
-		return
-	}
-
-	fmt.Printf("%q\n", err.Error())
-
-	_requireTxStatus(s, tx, err, types.ReceiptStatusFailed)
-}
-
-func _requireTxStatus(s *ReserveDollarSuite, tx *types.Transaction, err error, status uint64) {
-	s.Require().NoError(err)
-	s.Require().NotNil(tx)
-	receipt, err := bind.WaitMined(context.Background(), s.node, tx)
-	s.Require().NoError(err)
-	s.Require().Equal(status, receipt.Status)
-}
-
-func (s *ReserveDollarSuite) assertBalance(address common.Address, amount *big.Int) {
-	balance, err := s.reserve.BalanceOf(nil, address)
-	s.NoError(err)
-	s.Equal(amount.String(), balance.String()) // assert.Equal can mis-compare big.Ints, so compare strings instead
-}
-
-func (s *ReserveDollarSuite) assertAllowance(owner, spender common.Address, amount *big.Int) {
-	allowance, err := s.reserve.Allowance(nil, owner, spender)
-	s.NoError(err)
-	s.Equal(amount.String(), allowance.String())
-}
-
-func (s *ReserveDollarSuite) assertTotalSupply(amount *big.Int) {
-	totalSupply, err := s.reserve.TotalSupply(nil)
-	s.NoError(err)
-	s.Equal(amount.String(), totalSupply.String())
-}
-
 func (s *ReserveDollarSuite) SetupSuite() {
-	//var err error
-	//s.node, err = soltools.NewBackend("http://localhost:8545", repo.Path("fiatcoin/artifacts"), repo.Path("fiatcoin"))
-	//s.Require().NoError(err)
-
-	// The first few keys from the following well-known mnemonic used by 0x:
-	//	concert load couple harbor equip island argue ramp clarify fence smart topic
-	keys := []string{
-		"f2f48ee19680706196e2e339e5da3491186e0c4c5030670656b0e0164837257d",
-		"5d862464fe9303452126c8bc94274b8c5f9874cbd219789b3eb2128075a76f72",
-		"df02719c4df8b9b8ac7f551fcb5d9ef48fa27eef7a66453879f4d8fdc6e78fb1",
-		"ff12e391b79415e941a94de3bf3a9aee577aed0731e297d5cfa0b8a1e02fa1d0",
-		"752dd9cf65e68cfaba7d60225cbdbc1f4729dd5e5507def72815ed0d8abc6249",
-		"efb595a0178eb79a8df953f87c5148402a224cdf725e88c0146727c6aceadccd",
+	s.setup()
+	if testing.CoverMode() == "" {
+		s.createFastNode()
+	} else {
+		s.createSlowCoverageNode()
 	}
-	s.account = make([]account, len(keys))
-	for i, key := range keys {
-		b, err := hex.DecodeString(key)
-		s.Require().NoError(err)
-		s.account[i].key, err = crypto.ToECDSA(b)
-		s.Require().NoError(err)
-	}
-	s.signer = signer(s.account[0])
-
-	genesisAlloc := core.GenesisAlloc{}
-	for _, account := range s.account {
-		genesisAlloc[account.address()] = core.GenesisAccount{
-			Balance: big.NewInt(math.MaxInt64),
-		}
-	}
-	s.node = backend{
-		backends.NewSimulatedBackend(
-			genesisAlloc,
-			// TODO: the tests fail if this is 4e6. why?
-			8e6, // roughly same order of magnitude as mainnet
-		),
-	}
-
-	/*
-		{
-			// Throwaway initial transaction.
-			// The tests fail if running against a newly-initialized 0xorg/devnet container.
-			// I (jeremy) suspect that this is because the node is configured to move through
-			// the historical Ethereum hard forks over the course of the first few blocks, rather
-			// than all at once in the first block. Meaning the first transactions run against different
-			// versions of Etherum than the rest of the transactions:
-			//
-			//   https://github.com/0xProject/0x-monorepo/blob/e909faa3ef9cea5d9b4044b993251e98afdb0d19/packages/devnet/genesis.json#L4-L9
-			//
-			// To work around this issue, we try to send a throwaway transaction at the beginning with a
-			// Homestead-style signature. This will fail if it is not the first transaction on the chain,
-			// but that's ok. If it is the first transaction on the chain, it succeeds and causes the chain
-			// to advance by one block, upgrading the Ethereum version and allowing the rest of the tests
-			// to pass.
-			tx, _ := types.SignTx(
-				types.NewTransaction(0, common.Address{}, common.Big0, 21000, common.Big1, nil),
-				types.HomesteadSigner{},
-				s.deployerKey,
-			)
-			s.node.SendTransaction(context.Background(), tx)
-		}
-	*/
 }
 
 func (s *ReserveDollarSuite) TearDownSuite() {
-	/*
-		s.Assert().NoError(s.node.WriteCoverage())
-		s.Assert().NoError(s.node.Close())
+	if testing.CoverMode() != "" {
+		s.Assert().NoError(s.node.(*soltools.Backend).WriteCoverage())
+		s.Assert().NoError(s.node.(*soltools.Backend).Close())
 
 		if out, err := exec.Command("npx", "istanbul", "report", "html").CombinedOutput(); err != nil {
 			fmt.Println()
@@ -170,7 +51,7 @@ func (s *ReserveDollarSuite) TearDownSuite() {
 			fmt.Println("The error I got when running istanbul was:", err)
 			fmt.Println("Istanbul's output was:\n" + string(out))
 		}
-	*/
+	}
 }
 
 func (s *ReserveDollarSuite) BeforeTest(suiteName, testName string) {
@@ -178,6 +59,11 @@ func (s *ReserveDollarSuite) BeforeTest(suiteName, testName string) {
 	s.requireTx(tx, err)
 
 	s.reserve = reserve
+
+	// Make the deployment account a minter, pauser, and freezer.
+	s.requireTx(s.reserve.ChangeMinter(s.signer, s.account[0].address()))
+	s.requireTx(s.reserve.ChangePauser(s.signer, s.account[0].address()))
+	s.requireTx(s.reserve.ChangeFreezer(s.signer, s.account[0].address()))
 }
 
 func (s *ReserveDollarSuite) TestDeploy() {}
@@ -239,8 +125,10 @@ func (s *ReserveDollarSuite) TestAllowsMinting() {
 	recipient := common.BigToAddress(common.Big1)
 	amount := big.NewInt(100)
 
+	// Mint to recipient.
 	s.requireTx(s.reserve.Mint(s.signer, recipient, amount))
 
+	// Check that balances are as expected.
 	s.assertBalance(s.account[0].address(), common.Big0)
 	s.assertBalance(recipient, amount)
 	s.assertTotalSupply(amount)
@@ -288,16 +176,16 @@ func (s *ReserveDollarSuite) TestApprove() {
 	spender := s.account[2]
 	amount := big.NewInt(53)
 
-	// owner approves spender
+	// Owner approves spender.
 	s.requireTx(s.reserve.Approve(signer(owner), spender.address(), amount))
 
-	// approval should be reflected in allowance
+	// Approval should be reflected in allowance.
 	s.assertAllowance(owner.address(), spender.address(), amount)
 
-	// shouldn't be symmetric
+	// Shouldn't be symmetric.
 	s.assertAllowance(spender.address(), owner.address(), common.Big0)
 
-	// balances shouldn't change
+	// Balances shouldn't change.
 	s.assertBalance(owner.address(), common.Big0)
 	s.assertBalance(spender.address(), common.Big0)
 	s.assertTotalSupply(common.Big0)
@@ -308,16 +196,16 @@ func (s *ReserveDollarSuite) TestIncreaseAllowance() {
 	spender := s.account[2]
 	amount := big.NewInt(2000)
 
-	// owner approves spender through increaseAllowance
+	// Owner approves spender through increaseAllowance.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), amount))
 
-	// approval should be reflected in allowance
+	// Approval should be reflected in allowance.
 	s.assertAllowance(owner.address(), spender.address(), amount)
 
-	// shouldn't be symmetric
+	// Shouldn't be symmetric.
 	s.assertAllowance(spender.address(), owner.address(), common.Big0)
 
-	// balances shouldn't change
+	// Balances shouldn't change.
 	s.assertBalance(owner.address(), common.Big0)
 	s.assertBalance(spender.address(), common.Big0)
 	s.assertTotalSupply(common.Big0)
@@ -335,10 +223,10 @@ func (s *ReserveDollarSuite) TestIncreaseAllowanceOverflow() {
 	spender := s.account[2]
 	initialAmount := big.NewInt(10)
 
-	// owner approves spender for initial amount
+	// Owner approves spender for initial amount.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), initialAmount))
 
-	// owner should not be able to increase approval high enough to overflow a uint256
+	// Owner should not be able to increase approval high enough to overflow a uint256.
 	s.requireTxFails(s.reserve.IncreaseAllowance(signer(owner), spender.address(), maxUint256()))
 }
 
@@ -349,40 +237,82 @@ func (s *ReserveDollarSuite) TestDecreaseAllowance() {
 	decrease := big.NewInt(6)
 	final := big.NewInt(4)
 
-	// owner approves spender for initial amount
+	// Owner approves spender for initial amount.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), initialAmount))
 
-	// owner decreases allowance
+	// Owner decreases allowance.
 	s.requireTx(s.reserve.DecreaseAllowance(signer(owner), spender.address(), decrease))
 
-	// allowance should be as we expect
+	// Allowance should be as we expect.
 	s.assertAllowance(owner.address(), spender.address(), final)
 
-	// balances shouldn't change
+	// Balances shouldn't change.
 	s.assertBalance(owner.address(), common.Big0)
 	s.assertBalance(spender.address(), common.Big0)
 	s.assertTotalSupply(common.Big0)
 }
 
 func (s *ReserveDollarSuite) TestPausing() {
-	// Minting is not allowed while paused.
-	amount := big.NewInt(100)
-	s.requireTx(s.reserve.Mint(s.signer, s.account[0].address(), amount))
+	sender := s.account[1]
+	amount := big.NewInt(1000)
+	approveAmount := common.Big1
+	recipient := s.account[2]
+	spender := s.account[3]
+
+	// Give sender funds. Minting is allowed while unpaused.
+	s.requireTx(s.reserve.Mint(s.signer, sender.address(), amount))
+	s.assertBalance(sender.address(), amount)
+
+	// Approve spender to spend senders funds.
+	s.requireTx(s.reserve.Approve(signer(sender), spender.address(), approveAmount))
+	s.assertAllowance(sender.address(), spender.address(), approveAmount)
 
 	// Pause.
 	s.requireTx(s.reserve.Pause(s.signer))
 
+	// Minting is not allowed while paused.
+	s.requireTxFails(s.reserve.Mint(s.signer, recipient.address(), amount))
+
+	// Transfers from are not allowed while paused.
+	s.requireTxFails(s.reserve.TransferFrom(s.signer, sender.address(), recipient.address(), amount))
+	s.assertBalance(recipient.address(), common.Big0)
+	s.assertBalance(sender.address(), amount)
+
 	// Transfers are not allowed while paused.
-	recipient := common.BigToAddress(common.Big1)
-	s.requireTxFails(s.reserve.Transfer(s.signer, recipient, amount))
-	s.assertBalance(recipient, common.Big0)
+	s.requireTxFails(s.reserve.Transfer(signer(sender), recipient.address(), amount))
+	s.assertBalance(recipient.address(), common.Big0)
+	s.assertBalance(sender.address(), amount)
+
+	// Approving is not allowed while paused.
+	s.requireTxFails(s.reserve.Approve(signer(sender), spender.address(), amount))
+	s.assertAllowance(sender.address(), spender.address(), approveAmount)
+
+	// IncreaseAllowance is not allowed while paused.
+	s.requireTxFails(s.reserve.IncreaseAllowance(signer(sender), spender.address(), amount))
+	s.assertAllowance(sender.address(), spender.address(), approveAmount)
+
+	// DecreaseAllowance is not allowed while paused.
+	s.requireTxFails(s.reserve.DecreaseAllowance(signer(sender), spender.address(), amount))
+	s.assertAllowance(sender.address(), spender.address(), approveAmount)
 
 	// Unpause.
 	s.requireTx(s.reserve.Unpause(s.signer))
 
 	// Transfers are allowed while unpaused.
-	s.requireTx(s.reserve.Transfer(s.signer, recipient, amount))
-	s.assertBalance(recipient, amount)
+	s.requireTx(s.reserve.Transfer(signer(sender), recipient.address(), amount))
+	s.assertBalance(recipient.address(), amount)
+
+	// Approving is allowed while paused.
+	s.requireTx(s.reserve.Approve(signer(sender), spender.address(), common.Big2))
+	s.assertAllowance(sender.address(), spender.address(), common.Big2)
+
+	// DecreaseAllowance is allowed while unpaused.
+	s.requireTx(s.reserve.DecreaseAllowance(signer(sender), spender.address(), approveAmount))
+	s.assertAllowance(sender.address(), spender.address(), approveAmount)
+
+	// IncreaseAllowance is allowed while unpaused.
+	s.requireTx(s.reserve.IncreaseAllowance(signer(sender), spender.address(), approveAmount))
+	s.assertAllowance(sender.address(), spender.address(), common.Big2)
 }
 
 func (s *ReserveDollarSuite) TestFreezeTransferOut() {
@@ -446,7 +376,7 @@ func (s *ReserveDollarSuite) TestFreezeApprovals() {
 	// Unfrozen account should be able to create approvals again.
 	s.requireTx(s.reserve.Approve(signer(target), recipient.address(), common.Big1))
 	s.requireTx(s.reserve.IncreaseAllowance(signer(target), recipient.address(), common.Big1))
-	s.assertAllowance(target.address(), recipient.address(), big.NewInt(2))
+	s.assertAllowance(target.address(), recipient.address(), common.Big2)
 }
 
 func (s *ReserveDollarSuite) TestFreezeTransferFrom() {
@@ -474,7 +404,7 @@ func (s *ReserveDollarSuite) TestFreezeTransferFrom() {
 	s.assertBalance(recipient.address(), amount)
 }
 
-func (s *ReserveDollarSuite) TestFreezeReceiveApproval() {
+func (s *ReserveDollarSuite) TestFreezeApprove() {
 	target := s.account[1]
 
 	// Freeze target.
@@ -482,16 +412,53 @@ func (s *ReserveDollarSuite) TestFreezeReceiveApproval() {
 
 	// Should not be able to approve frozen target.
 	s.requireTxFails(s.reserve.Approve(s.signer, target.address(), common.Big1))
-	s.requireTxFails(s.reserve.IncreaseAllowance(s.signer, target.address(), common.Big1))
-	s.assertAllowance(s.account[0].address(), target.address(), common.Big0)
 
 	// Unfreeze target.
 	s.requireTx(s.reserve.Unfreeze(s.signer, target.address()))
 
 	// Should be able to approve unfrozen target.
 	s.requireTx(s.reserve.Approve(s.signer, target.address(), common.Big1))
-	s.requireTx(s.reserve.IncreaseAllowance(s.signer, target.address(), common.Big1))
-	s.assertAllowance(s.account[0].address(), target.address(), big.NewInt(2))
+}
+
+func (s *ReserveDollarSuite) TestFreezeIncreaseAllowance() {
+	target := s.account[1]
+	owner := s.account[2]
+
+	// Freeze target.
+	s.requireTx(s.reserve.Freeze(s.signer, target.address()))
+
+	// Should not be able to increase allowance frozen target.
+	s.requireTxFails(s.reserve.IncreaseAllowance(signer(owner), target.address(), common.Big1))
+	s.assertAllowance(owner.address(), target.address(), common.Big0)
+
+	// Unfreeze target.
+	s.requireTx(s.reserve.Unfreeze(s.signer, target.address()))
+
+	// Should be able to increase allowance unfrozen target.
+	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), target.address(), common.Big1))
+	s.assertAllowance(owner.address(), target.address(), common.Big1)
+}
+
+func (s *ReserveDollarSuite) TestFreezeDecreaseAllowance() {
+	spender := s.account[1]
+	owner := s.account[2]
+
+	// Increase allowance to set up for decrease.
+	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), common.Big1))
+
+	// Freeze spender.
+	s.requireTx(s.reserve.Freeze(s.signer, spender.address()))
+
+	// Should not be able to decrease allowance frozen spender.
+	s.requireTxFails(s.reserve.DecreaseAllowance(signer(owner), spender.address(), common.Big1))
+	s.assertAllowance(owner.address(), spender.address(), common.Big1)
+
+	// Unfreeze spender.
+	s.requireTx(s.reserve.Unfreeze(s.signer, spender.address()))
+
+	// Should be able to decrease allowance unfrozen spender.
+	s.requireTx(s.reserve.DecreaseAllowance(signer(owner), spender.address(), common.Big1))
+	s.assertAllowance(owner.address(), spender.address(), common.Big0)
 }
 
 func (s *ReserveDollarSuite) TestWiping() {
@@ -517,23 +484,50 @@ func (s *ReserveDollarSuite) TestWiping() {
 	s.assertBalance(target.address(), common.Big0)
 }
 
-type backend struct {
-	*backends.SimulatedBackend
+func (s *ReserveDollarSuite) TestMintingBurningChain() {
+	// Mint to recipient.
+	recipient := s.account[1]
+	amount := big.NewInt(100)
+
+	s.requireTx(s.reserve.Mint(s.signer, recipient.address(), amount))
+
+	s.assertBalance(recipient.address(), amount)
+	s.assertTotalSupply(amount)
+
+	// Approve signer for burning.
+	s.requireTx(s.reserve.Approve(signer(recipient), s.account[0].address(), amount))
+
+	// Burn from recipient.
+	s.requireTx(s.reserve.BurnFrom(s.signer, recipient.address(), amount))
+
+	s.assertBalance(recipient.address(), common.Big0)
+	s.assertTotalSupply(common.Big0)
 }
 
-func (b backend) SendTransaction(ctx context.Context, tx *types.Transaction) error {
-	defer b.Commit()
-	return b.SimulatedBackend.SendTransaction(ctx, tx)
-}
+func (s *ReserveDollarSuite) TestMintingTransferBurningChain() {
+	// Mint to recipient.
+	recipient := s.account[1]
+	amount := big.NewInt(100)
 
-func signer(a account) *bind.TransactOpts {
-	return bind.NewKeyedTransactor(a.key)
-}
+	s.requireTx(s.reserve.Mint(s.signer, recipient.address(), amount))
 
-type account struct {
-	key *ecdsa.PrivateKey
-}
+	s.assertBalance(recipient.address(), amount)
+	s.assertTotalSupply(amount)
 
-func (a account) address() common.Address {
-	return crypto.PubkeyToAddress(a.key.PublicKey)
+	// Transfer to target.
+	target := s.account[2]
+	s.requireTx(s.reserve.Transfer(signer(recipient), target.address(), amount))
+
+	s.assertBalance(target.address(), amount)
+	s.assertBalance(recipient.address(), common.Big0)
+
+	// Approve signer for burning.
+	s.requireTx(s.reserve.Approve(signer(target), s.account[0].address(), amount))
+
+	// Burn from target.
+	s.requireTx(s.reserve.BurnFrom(s.signer, target.address(), amount))
+
+	s.assertBalance(target.address(), common.Big0)
+	s.assertBalance(recipient.address(), common.Big0)
+	s.assertTotalSupply(common.Big0)
 }

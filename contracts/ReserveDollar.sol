@@ -12,14 +12,14 @@ import "./ReserveDollarEternalStorage.sol";
  * implements the ERC-20 interface.
  */
 interface IERC20 {
-    function transfer(address to, uint256 value) external returns (bool);
-    function approve(address spender, uint256 value) external returns (bool);
-    function transferFrom(address from, address to, uint256 value) external returns (bool);
+    function transfer(address, uint256) external returns (bool);
+    function approve(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
     function totalSupply() external view returns (uint256);
-    function balanceOf(address who) external view returns (uint256);
-    function allowance(address addr, address spender) external view returns (uint256);
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed _owner, address indexed spender, uint256 value);
+    function balanceOf(address) external view returns (uint256);
+    function allowance(address, address) external view returns (uint256);
+    event Transfer(address indexed, address indexed, uint256);
+    event Approval(address indexed, address indexed, uint256);
 }
 
 /**
@@ -48,17 +48,20 @@ contract ReserveDollar is IERC20 {
 
     mapping (address => bool) frozen;
 
-    address private owner;
-    address minter;
-    address pauser;
-    address freezer;
+    address public owner;
+    address public minter;
+    address public pauser;
+    address public freezer;
+
+    event OwnerChanged(address indexed newOwner);
+    event MinterChanged(address indexed newMinter);
+    event PauserChanged(address indexed newPauser);
+    event FreezerChanged(address indexed newFreezer);
 
     constructor() public {
         data = new ReserveDollarEternalStorage();
         owner = msg.sender;
-        minter = msg.sender;
         pauser = msg.sender;
-        freezer = msg.sender;
     }
 
     /**
@@ -75,6 +78,34 @@ contract ReserveDollar is IERC20 {
     modifier onlyRole(address role) {
         require(msg.sender == role, "onlyRole");
         _;
+    }
+
+    /**
+     * @dev Throws if called by any account other than role or owner.
+     */
+    modifier roleChange(address roleHolder) {
+        require(msg.sender == owner || msg.sender == roleHolder, "unauthorized");
+        _;
+    }
+
+    function changeMinter(address newMinter) public roleChange(minter) {
+        minter = newMinter;
+        emit MinterChanged(newMinter);
+    }
+
+    function changePauser(address newPauser) public roleChange(pauser) {
+        pauser = newPauser;
+        emit PauserChanged(newPauser);
+    }
+
+    function changeFreezer(address newFreezer) public roleChange(freezer) {
+        freezer = newFreezer;
+        emit FreezerChanged(newFreezer);
+    }
+
+    function changeOwner(address newOwner) public roleChange(owner) {
+        owner = newOwner;
+        emit OwnerChanged(newOwner);
     }
 
     event NameChanged(string newName, string newSymbol);
@@ -99,7 +130,7 @@ contract ReserveDollar is IERC20 {
     }
 
     modifier whenNotPaused() {
-        require(!paused, "paused");
+        require(!paused, "contract is paused");
         _;
     }
 
@@ -271,7 +302,7 @@ contract ReserveDollar is IERC20 {
     }
 
     /**
-     * @dev Tunction that mints an amount of the token and assigns it to
+     * @dev Function that mints an amount of the token and assigns it to
      * an account. This encapsulates the modification of balances such that the
      * proper events are emitted.
      * @param account The account that will receive the created tokens.
@@ -283,6 +314,19 @@ contract ReserveDollar is IERC20 {
         _totalSupply = _totalSupply.add(value);
         data.addBalance(account, value);
         emit Transfer(address(0), account, value);
+    }
+
+    /**
+     * @dev Function that burns an amount of the token of a given
+     * account, deducting from the sender's allowance for said account. Uses the
+     * internal burn function.
+     * Emits an Approval event (reflecting the reduced allowance).
+     * @param account The account whose tokens will be burnt.
+     * @param value The amount that will be burnt.
+     */
+    function burnFrom(address account, uint256 value) public whenNotPaused onlyRole(minter) {
+        _burn(account, value);
+        _approve(account, msg.sender, data.allowed(account, msg.sender).sub(value));
     }
 
     /**
