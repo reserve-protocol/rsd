@@ -495,10 +495,10 @@ func (s *ReserveDollarSuite) TestMintingBurningChain() {
 	s.assertTotalSupply(amount)
 
 	// Burn from recipient
-	// s.requireTx(s.reserve.BurnFrom(recipient.address(), amount))
+	s.requireTx(s.reserve.BurnFrom(s.signer, recipient.address(), amount))
 
-	// s.assertBalance(recipient.address(), common.Big0)
-	// s.assertTotalSupply(common.Big0)
+	s.assertBalance(recipient.address(), common.Big0)
+	s.assertTotalSupply(common.Big0)
 }
 
 func (s *ReserveDollarSuite) TestMintingTransferBurningChain() {
@@ -519,9 +519,9 @@ func (s *ReserveDollarSuite) TestMintingTransferBurningChain() {
 	s.assertBalance(recipient.address(), common.Big0)
 
 	// Burn from target.
-	// s.requireTx(s.reserve.BurnFrom(target.address(), amount))
+	s.requireTx(s.reserve.BurnFrom(s.signer, target.address(), amount))
 
-	// s.assertBalance(target.address(), common.Big0)
-	// s.assertBalance(recipient.address(), common.Big0)
-	// s.assertTotalSupply(common.Big0)
+	s.assertBalance(target.address(), common.Big0)
+	s.assertBalance(recipient.address(), common.Big0)
+	s.assertTotalSupply(common.Big0)
 }
