@@ -32,6 +32,7 @@ var (
 	_ suite.TearDownAllSuite = &ReserveDollarSuite{}
 )
 
+// SetupSuite runs once, before all of the tests in the suite.
 func (s *ReserveDollarSuite) SetupSuite() {
 	s.setup()
 	if testing.CoverMode() == "" {
@@ -41,11 +42,16 @@ func (s *ReserveDollarSuite) SetupSuite() {
 	}
 }
 
+// TearDownSuite runs once, after all of the tests in the suite.
 func (s *ReserveDollarSuite) TearDownSuite() {
 	if testing.CoverMode() != "" {
+		// Write coverage profile to disk.
 		s.Assert().NoError(s.node.(*soltools.Backend).WriteCoverage())
+
+		// Close the node.js process.
 		s.Assert().NoError(s.node.(*soltools.Backend).Close())
 
+		// Process coverage profile into an HTML report.
 		if out, err := exec.Command("npx", "istanbul", "report", "html").CombinedOutput(); err != nil {
 			fmt.Println()
 			fmt.Println("I generated coverage information in coverage/coverage.json.")
@@ -56,6 +62,7 @@ func (s *ReserveDollarSuite) TearDownSuite() {
 	}
 }
 
+// Before test runs before each test in the suite.
 func (s *ReserveDollarSuite) BeforeTest(suiteName, testName string) {
 	_, tx, reserve, err := abi.DeployReserveDollar(s.signer, s.node)
 	s.requireTx(tx, err)

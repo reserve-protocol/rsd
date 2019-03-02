@@ -185,6 +185,7 @@ func (b backend) AdjustTime(delta time.Duration) error {
 	return b.SimulatedBackend.AdjustTime(delta)
 }
 
+// signer returns a *bind.TransactOpts that uses a's private key to sign transactions.
 func signer(a account) *bind.TransactOpts {
 	return bind.NewKeyedTransactor(a.key)
 }

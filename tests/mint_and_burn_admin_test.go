@@ -37,10 +37,14 @@ var (
 
 func (s *MintAndBurnAdminSuite) SetupSuite() {
 	s.setup()
+
 	if testing.CoverMode() != "" {
+		// Print warning that we don't support coverage.
 		fmt.Fprintln(os.Stderr, "\nNOTE: Coverage information is not available for MintAndBurnAdmin, because its tests require faking the block timestamp")
 		fmt.Fprintln(os.Stderr)
 	}
+
+	// Always use the fast node without coverage.
 	s.createFastNode()
 }
 
