@@ -61,9 +61,7 @@ contract ReserveDollar is IERC20 {
     constructor() public {
         data = new ReserveDollarEternalStorage();
         owner = msg.sender;
-        minter = msg.sender;
         pauser = msg.sender;
-        freezer = msg.sender;
     }
 
     /**
