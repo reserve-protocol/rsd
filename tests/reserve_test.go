@@ -180,6 +180,30 @@ func (s *ReserveDollarSuite) TestTransferExceedsFunds() {
 	s.assertTotalSupply(smallAmount)
 }
 
+// Perform the same tests where the recipient
+func (s *ReserveDollarSuite) TestMintWouldOverflow() {
+	interestingRecipients := []common.Address{
+		common.BigToAddress(big.NewInt(1)),
+		common.BigToAddress(big.NewInt(255)),
+        common.BigToAddress(big.NewInt(256)),
+        common.BigToAddress(big.NewInt(256)),
+        common.BigToAddress(maxUint160()),
+        common.BigToAddress(minInt160AsUint160()),
+	}
+	for _, recipient := range interestingRecipients {
+		smallAmount := big.NewInt(10) // must be smaller than amount
+		overflowCausingAmount := maxUint256()
+		overflowCausingAmount = overflowCausingAmount.Sub(overflowCausingAmount, big.NewInt(8))
+
+		// Mint smallAmount to recipient.
+		s.requireTx(s.reserve.Mint(s.signer, recipient, smallAmount))
+
+		// Mint a quantity large enough to cause overflow in totalSupply i.e.
+		// `10 + (uint256::MAX - 8) > uint256::MAX`
+		s.requireTxFails(s.reserve.Mint(s.signer, recipient, overflowCausingAmount))
+	}
+}
+
 func (s *ReserveDollarSuite) TestApprove() {
 	owner := s.account[1]
 	spender := s.account[2]
@@ -224,6 +248,20 @@ func maxUint256() *big.Int {
 	z := big.NewInt(1)
 	z = z.Lsh(z, 256)
 	z = z.Sub(z, common.Big1)
+	return z
+}
+
+func maxUint160() *big.Int {
+	z := big.NewInt(1)
+	z = z.Lsh(z, 160)
+	z = z.Sub(z, common.Big1)
+	return z
+}
+
+
+func minInt160AsUint160() *big.Int {
+	z := big.NewInt(1)
+	z = z.Lsh(z, 159)
 	return z
 }
 
