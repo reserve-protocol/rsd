@@ -1,3 +1,5 @@
+export REPO_DIR = $(shell pwd)
+
 abi/bindings: contracts/*.sol abi/generate.go
 	npx sol-compiler
 	go run abi/generate.go
@@ -6,10 +8,16 @@ abi/bindings: contracts/*.sol abi/generate.go
 test: abi/bindings
 	go test ./tests
 
-export REPO_DIR = $(shell pwd)
 coverage: abi/bindings
 	go test -v -cover ./tests
 	open tests/coverage/index.html
 
 fmt:
 	npx solium -d contracts/ --fix
+
+run-dev-container:
+	docker run \
+		--rm \
+		-it \
+		--mount type=bind,source="$(REPO_DIR)",target=/reserve-dollar \
+		reserveprotocol/env

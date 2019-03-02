@@ -14,6 +14,10 @@ TODO: overview of the Reserve Dollar
 
 - Run `npm install`
 
+## Dockerized environment
+
+There is also a dockerized version of the development environment. You can open it with `make run-dev-container`. It's not intended to handle all development workflows, but you should be able to successfully run `make test` in it, and use it to troubleshoot your host environment if necessary.
+
 # Running tests
 
 Test with `make test`.
