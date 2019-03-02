@@ -46,7 +46,7 @@ contract ReserveDollar is IERC20 {
 
     bool public paused;
 
-    mapping (address => bool) frozen;
+    mapping (address => uint256) frozenTime;
 
     address public owner;
     address public minter;
@@ -139,24 +139,25 @@ contract ReserveDollar is IERC20 {
     event Wiped(address indexed freezer, address indexed wiped);
 
     function freeze(address who) public onlyRole(freezer) {
-        require(!frozen[who], "account already frozen");
-        frozen[who] = true;
+        require(frozenTime[who] == 0, "account already frozen");
+        frozenTime[who] = now; // solium-disable-line security/no-block-members
         emit Frozen(freezer, who);
     }
 
     function unfreeze(address who) public onlyRole(freezer) {
-        require(frozen[who], "account not frozen");
-        frozen[who] = false;
+        require(frozenTime[who] > 0, "account not frozen");
+        frozenTime[who] = 0;
         emit Unfrozen(freezer, who);
     }
 
     modifier notFrozen(address account) {
-        require(!frozen[account], "account frozen");
+        require(frozenTime[account] == 0, "account frozen");
         _;
     }
 
     function wipe(address who) public onlyRole(freezer) {
-        require(frozen[who], "cannot wipe unfrozen account");
+        require(frozenTime[who] > 0, "cannot wipe unfrozen account");
+        require(frozenTime[who] + 4 weeks < now, "cannot wipe frozen account before 4 weeks");
         _burn(who, data.balance(who));
         emit Wiped(freezer, who);
     }

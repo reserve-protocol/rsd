@@ -81,7 +81,6 @@ func (s *MintAndBurnAdminSuite) TestAdminCanMint() {
 
 	// Advance time.
 	s.Require().NoError(s.node.(backend).AdjustTime(14 * time.Hour))
-	s.node.(backend).Commit()
 
 	// Trying to confirm it should now succeed.
 	s.requireTx(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))

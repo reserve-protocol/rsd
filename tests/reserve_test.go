@@ -3,8 +3,10 @@ package tests
 import (
 	"fmt"
 	"math/big"
+	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/suite"
@@ -477,11 +479,22 @@ func (s *ReserveDollarSuite) TestWiping() {
 	// Target should still have funds.
 	s.assertBalance(target.address(), amount)
 
-	// Wipe target.
-	s.requireTx(s.reserve.Wipe(s.signer, target.address()))
+	// Should not be able to immediately wipe target.
+	s.requireTxFails(s.reserve.Wipe(s.signer, target.address()))
 
-	// Target should have zero funds.
-	s.assertBalance(target.address(), common.Big0)
+	if simulatedBackend, ok := s.node.(backend); ok {
+		// Simulate advancing time.
+		simulatedBackend.AdjustTime(24 * time.Hour * 40)
+
+		// Should be able to wipe target now.
+		s.requireTx(s.reserve.Wipe(s.signer, target.address()))
+
+		// Target should have zero funds.
+		s.assertBalance(target.address(), common.Big0)
+	} else {
+		fmt.Fprintln(os.Stderr, "\nCan't simulate advancing time in coverage mode -- not testing wiping after a delay.")
+		fmt.Fprintln(os.Stderr)
+	}
 }
 
 func (s *ReserveDollarSuite) TestMintingBurningChain() {
