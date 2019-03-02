@@ -21,6 +21,8 @@ func TestReserveDollar(t *testing.T) {
 
 type ReserveDollarSuite struct {
 	TestSuite
+
+	reserveAddress common.Address
 }
 
 var (
@@ -64,10 +66,11 @@ func (s *ReserveDollarSuite) TearDownSuite() {
 
 // Before test runs before each test in the suite.
 func (s *ReserveDollarSuite) BeforeTest(suiteName, testName string) {
-	_, tx, reserve, err := abi.DeployReserveDollar(s.signer, s.node)
+	reserveAddress, tx, reserve, err := abi.DeployReserveDollar(s.signer, s.node)
 	s.requireTx(tx, err)
 
 	s.reserve = reserve
+	s.reserveAddress = reserveAddress
 
 	// Make the deployment account a minter, pauser, and freezer.
 	s.requireTx(s.reserve.ChangeMinter(s.signer, s.account[0].address()))
@@ -599,10 +602,10 @@ func (s *ReserveDollarSuite) TestMintingBurningChain() {
 }
 
 func (s *ReserveDollarSuite) TestMintingTransferBurningChain() {
-	// Mint to recipient.
 	recipient := s.account[1]
 	amount := bigInt(100)
 
+	// Mint to recipient.
 	s.requireTx(s.reserve.Mint(s.signer, recipient.address(), amount))
 
 	s.assertBalance(recipient.address(), amount)
@@ -712,4 +715,45 @@ func (s *ReserveDollarSuite) TestTransferFromWouldUnderflow() {
 
 func bigInt(n uint32) *big.Int {
 	return big.NewInt(int64(n))
+}
+
+func (s *ReserveDollarSuite) TestUpgrade() {
+	recipient := s.account[1]
+	amount := big.NewInt(100)
+
+	// Mint to recipient.
+	s.requireTx(s.reserve.Mint(s.signer, recipient.address(), amount))
+
+	// Deploy new contract.
+	newKey := s.account[2]
+	newTokenAddress, tx, newToken, err := abi.DeployReserveDollarV2(signer(newKey), s.node)
+	s.requireTx(tx, err)
+
+	// Make the switch.
+	s.requireTx(s.reserve.NominateNewOwner(s.signer, newTokenAddress))
+	s.requireTx(newToken.CompleteHandoff(signer(newKey), s.reserveAddress))
+
+	// Old token should not be functional.
+	s.requireTxFails(s.reserve.Mint(s.signer, recipient.address(), big.NewInt(1500)))
+	s.requireTxFails(s.reserve.Transfer(signer(recipient), s.account[3].address(), big.NewInt(10)))
+	s.requireTxFails(s.reserve.Pause(s.signer))
+	s.requireTxFails(s.reserve.Unpause(s.signer))
+
+	// assertion function for new token
+	assertBalance := func(address common.Address, amount *big.Int) {
+		balance, err := newToken.BalanceOf(nil, address)
+		s.NoError(err)
+		s.Equal(amount.String(), balance.String()) // assert.Equal can mis-compare big.Ints, so compare strings instead
+	}
+
+	// New token should be functional.
+	assertBalance(recipient.address(), amount)
+	s.requireTx(newToken.ChangeMinter(signer(newKey), newKey.address()))
+	s.requireTx(newToken.ChangePauser(signer(newKey), newKey.address()))
+	s.requireTx(newToken.Mint(signer(newKey), recipient.address(), big.NewInt(1500)))
+	s.requireTx(newToken.Transfer(signer(recipient), s.account[3].address(), big.NewInt(10)))
+	s.requireTx(newToken.Pause(signer(newKey)))
+	s.requireTx(newToken.Unpause(signer(newKey)))
+	assertBalance(recipient.address(), big.NewInt(100+1500-10))
+	assertBalance(s.account[3].address(), big.NewInt(10))
 }

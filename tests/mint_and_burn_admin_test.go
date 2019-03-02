@@ -121,3 +121,5 @@ func (s *MintAndBurnAdminSuite) TestAdminCanCancelMinting() {
 	_, err = s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true)
 	s.Error(err)
 }
+
+// TODO: test changing admin

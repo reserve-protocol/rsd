@@ -36,7 +36,11 @@ interface IERC20 {
 contract ReserveDollar is IERC20 {
     using SafeMath for uint256;
 
-    ReserveDollarEternalStorage private data;
+    ReserveDollarEternalStorage internal data;
+
+    function getEternalStorageAddress() public view returns(address) {
+        return address(data);
+    }
 
     uint256 private _totalSupply;
 
@@ -50,6 +54,7 @@ contract ReserveDollar is IERC20 {
     address public minter;
     address public pauser;
     address public freezer;
+    address public nominatedOwner;
 
     event OwnerChanged(address indexed newOwner);
     event MinterChanged(address indexed newMinter);
@@ -93,9 +98,25 @@ contract ReserveDollar is IERC20 {
         emit FreezerChanged(newFreezer);
     }
 
-    function changeOwner(address newOwner) external only(owner) {
-        owner = newOwner;
-        emit OwnerChanged(newOwner);
+    function nominateNewOwner(address nominee) external only(owner) {
+        nominatedOwner = nominee;
+    }
+
+    function acceptOwnership() external onlyOwnerOr(nominatedOwner) {
+        if (msg.sender != owner) {
+            emit OwnerChanged(msg.sender);
+        }
+        owner = msg.sender;
+        nominatedOwner = msg.sender;
+    }
+
+    function renounceOwnership() external only(owner) {
+        owner = address(0);
+        emit OwnerChanged(owner);
+    }
+
+    function transferEternalStorage(address newOwner) external only(owner) {
+        data.transferOwnership(newOwner);
     }
 
 
@@ -116,7 +137,7 @@ contract ReserveDollar is IERC20 {
         emit Paused(pauser);
     }
 
-    function unpause() external only(pauser) {
+    function unpause() public only(pauser) {
         paused = false;
         emit Unpaused(pauser);
     }
@@ -126,7 +147,6 @@ contract ReserveDollar is IERC20 {
         _;
     }
 
-    
     event Frozen(address indexed freezer, address indexed account);
     event Unfrozen(address indexed freezer, address indexed account);
     event Wiped(address indexed freezer, address indexed wiped);
