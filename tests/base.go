@@ -43,8 +43,27 @@ type TestSuite struct {
 // not revert. It also takes an extra error argument, and checks that the
 // error is nil. This signature allows the function to directly wrap our
 // abigen'd mutator calls.
-func (s *TestSuite) requireTx(tx *types.Transaction, err error) {
-	s._requireTxStatus(tx, err, types.ReceiptStatusSuccessful)
+//
+// requireTx returns a closure that can be used to assert the list of events
+// that were emitted during the transaction. This API is a bit weird -- it would
+// be more natural to pass the events in to the `requireTx` call itself -- but
+// this is the cleanest way that is compatible with directly wrapping the abigen'd
+// calls, without using intermediate placeholder variables in calling code.
+func (s *TestSuite) requireTx(tx *types.Transaction, err error) func(assertEvent ...fmt.Stringer) {
+	receipt := s._requireTxStatus(tx, err, types.ReceiptStatusSuccessful)
+
+	// return a closure that can take a varargs list of events,
+	// and assert that the transaction generates those events.
+	return func(assertEvent ...fmt.Stringer) {
+		if s.Equal(len(assertEvent), len(receipt.Logs), "did not get the expected number of events") {
+			for i, wantEvent := range assertEvent {
+				gotEvent, err := s.reserve.ParseLog(receipt.Logs[i])
+				if s.NoErrorf(err, "parsing event %v", i) {
+					s.Equal(wantEvent.String(), gotEvent.String())
+				}
+			}
+		}
+	}
 }
 
 // requireTxFails is like requireTx, but it requires that the transaction either
@@ -59,12 +78,13 @@ func (s *TestSuite) requireTxFails(tx *types.Transaction, err error) {
 	s._requireTxStatus(tx, err, types.ReceiptStatusFailed)
 }
 
-func (s *TestSuite) _requireTxStatus(tx *types.Transaction, err error, status uint64) {
+func (s *TestSuite) _requireTxStatus(tx *types.Transaction, err error, status uint64) *types.Receipt {
 	s.Require().NoError(err)
 	s.Require().NotNil(tx)
 	receipt, err := bind.WaitMined(context.Background(), s.node, tx)
 	s.Require().NoError(err)
 	s.Require().Equal(status, receipt.Status)
+	return receipt
 }
 
 // assertBalance asserts that the Reserve Dollar balance of `address` is `amount`.
@@ -88,12 +108,14 @@ func (s *TestSuite) assertTotalSupply(amount *big.Int) {
 	s.Equal(amount.String(), totalSupply.String())
 }
 
+// TODO: delete
 type ReserveDollarApproval struct {
 	From  common.Address
 	To    common.Address
 	Value *big.Int
 }
 
+// TODO: delete
 // assertApprovalEvents asserts that the sequence of Approval events emitted by
 // the ReserveDollar contract exactly matches the list of expected valued in
 // `expected`.
@@ -118,10 +140,12 @@ func (s *ReserveDollarSuite) assertApprovalEvents(expected []ReserveDollarApprov
 	}
 }
 
+// TODO: delete
 func (s *ReserveDollarSuite) assertZeroApprovalEvents() {
 	s.assertApprovalEvents(make([]ReserveDollarApproval, 0))
 }
 
+// TODO: delete
 type ReserveDollarTransfer struct {
 	From  common.Address
 	To    common.Address
