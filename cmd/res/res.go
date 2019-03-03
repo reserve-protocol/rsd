@@ -239,18 +239,6 @@ func getNode() *ethclient.Client {
 }
 
 func getSigner() *bind.TransactOpts {
-	/*
-		keyBytes, err1 := hex.DecodeString(viper.GetString("from"))
-		key, err2 := crypto.ToECDSA(keyBytes)
-		if err1 != nil || err2 != nil {
-			fmt.Fprintln(os.Stderr, "Failed to parse a private key to use for transaction signing.")
-			fmt.Fprintln(os.Stderr, "To specify a private key, set the --from flag or RSVD_FROM environment variable to a hex-encoded private key of an account that already has enough ETH to cover gas costs.")
-			fmt.Fprintln(os.Stderr)
-			fmt.Fprintln(os.Stderr, "Or leave that flag and env variable unset to use the default key.")
-			os.Exit(1)
-		}
-		return bind.NewKeyedTransactor(key)
-	*/
 	return bind.NewKeyedTransactor(parseKey(viper.GetString("from")))
 }
 
