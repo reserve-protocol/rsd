@@ -34,7 +34,7 @@ var defaultKeys = []string{
 	"23cb7121166b9a2f93ae0b7c05bde02eae50d64449b2cbb42bc84e9d38d6cc89",
 }
 
-const resIntro = `A CLI for interacting with the Reserve Dollar smart contract.
+const pokeIntro = `A CLI for interacting with the Reserve Dollar smart contract.
 
 This is designed for testing purposes. The goal is to make it easier to run small experiments
 on the Reserve Dollar from the command line, without needing to write any code.
@@ -52,34 +52,34 @@ To run the 0xorg/devnet docker image, use the command:
 
 To deploy a new copy of the Reserve Dollar locally, run:
 
-    $(res deploy)
+    $(poke deploy)
 
 Running this command inside '$(...)' will cause your shell to execute the output of the
-command, which will set the appropriate environment variable for your next calls to 'res'
+command, which will set the appropriate environment variable for your next calls to 'poke'
 to run against the contract you just deployed.
 
 To see the owner of the contract you just deployed, run:
 
-    res owner
+    poke owner
 
 This should show '0x5409ED021D9299bf6814279A6A1411A7e866A631', the 0th pre-funded account
-in the 0xorg/devnet image. You can check that with 'res address':
+in the 0xorg/devnet image. You can check that with 'poke address':
 
-    res address @0
+    poke address @0
 
-Anywhere you need to supply an address or a private key to the res tool, you can use
+Anywhere you need to supply an address or a private key to the poke tool, you can use
 the special strings '@0' - '@9' to get the corresponding address or key from the ten
 pre-funded accounts in the 0xorg/devnet image.
 
-For paid mutator calls, 'res' will default to using account '@0'. To override this default
+For paid mutator calls, 'poke' will default to using account '@0'. To override this default
 per-command, you can use the '-F' (aka '--from') flag, like so:
 
-    res --from @1 transfer @2 200.5
+    poke --from @1 transfer @2 200.5
 
 You can also switch the default for the remainder of the current terminal session with
-'res account':
+'poke account':
 
-    $(res account @3)
+    $(poke account @3)
 `
 
 const usageTemplate = `Usage:{{if .Runnable}}
@@ -111,9 +111,9 @@ Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
 
 func main() {
 	root := cobra.Command{
-		Use:   "res",
+		Use:   "poke",
 		Short: "A command-line interface to interact with the Reserve Dollar smart contract",
-		Long:  resIntro,
+		Long:  pokeIntro,
 	}
 	type cmdBlock struct {
 		Name     string
@@ -254,7 +254,7 @@ func getReserveDollar() *abi.ReserveDollar {
 			fmt.Fprintln(os.Stderr, "No address specified for the Reserve Dollar contract.")
 			fmt.Fprintln(os.Stderr, "To specify an address, set the --address flag or the RSVD_ADDRESS environment variable.")
 			fmt.Fprintln(os.Stderr, "To deploy a new contract and set the RSVD_ADDRESS in your current shell in a single step, run:")
-			fmt.Fprintln(os.Stderr, "\t$(res deploy)")
+			fmt.Fprintln(os.Stderr, "\t$(poke deploy)")
 			os.Exit(1)
 		}
 		var err error
@@ -377,8 +377,8 @@ This command also outputs the newly-deployed address in the format:
 Which enables using the following pattern to conveniently deploy a new
 contract and use that contract address in subsequent commands:
 
-	$ $(res deploy)
-	$ res balanceOf @0
+	$ $(poke deploy)
+	$ poke balanceOf @0
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr, _, _, err := abi.DeployReserveDollar(getSigner(), getNode())
@@ -390,7 +390,7 @@ contract and use that contract address in subsequent commands:
 var addressCmd = &cobra.Command{
 	Use:     "address",
 	Short:   "Get the address corresponding to a private key. Accepts @-shorthands.",
-	Example: "res address @1",
+	Example: "poke address @1",
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(toAddress(parseKey(args[0])).Hex())
@@ -399,7 +399,7 @@ var addressCmd = &cobra.Command{
 
 var accountCmd = &cobra.Command{
 	Use:   "account",
-	Short: "Change the current acting account (invoke with `$(res account)`).",
+	Short: "Change the current acting account (invoke with `$(poke account)`).",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("export RSVD_FROM=" + keyToHex(parseKey(args[0])))
@@ -578,7 +578,7 @@ var changeMinterCmd = &cobra.Command{
 	Use:   "changeMinter <newMinter>",
 	Short: "Change the minter role. Must be called by the current minter or owner.",
 	Example: `Change the minter role to the address corresponding to the first default key:
-	res changeMinter $(res address @1)`,
+	poke changeMinter $(poke address @1)`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().ChangeMinter(getSigner(), parseAddress(args[0]))
@@ -590,7 +590,7 @@ var changePauserCmd = &cobra.Command{
 	Use:   "changePauser <newPauser>",
 	Short: "Change the pauser role. Must be called by the current pauser or owner.",
 	Example: `Change the pauser role to the address corresponding to the first default key:
-	res changePauser$(res address @1)`,
+	poke changePauser$(poke address @1)`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().ChangePauser(getSigner(), parseAddress(args[0]))
@@ -602,7 +602,7 @@ var changeFreezerCmd = &cobra.Command{
 	Use:   "changeFreezer <newFreezer>",
 	Short: "Change the freezer role. Must be called by the current freezer or owner.",
 	Example: `Change the freezer role to the address corresponding to the first default key:
-	res changeFreezer$(res address @1)`,
+	poke changeFreezer$(poke address @1)`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().ChangeFreezer(getSigner(), parseAddress(args[0]))
