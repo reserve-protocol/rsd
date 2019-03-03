@@ -20,23 +20,98 @@ There are three main smart contracts in `contracts/`: `ReserveDollar`, `ReserveD
 
 [EternalStorage]: https://fravoll.github.io/solidity-patterns/eternal_storage.html
 
-# Development environment
+# Environment Setup
 
-- Install Go >= 1.12
-    - Recommended approach: [download the latest binary distribution](https://golang.org/dl/) and then [follow the installation instructions](https://golang.org/doc/install#install)
-    - Check with `go version`
+To build and test everything in our configuration, your development environment will need:
 
-- Install node and npm
-    - Recommended approach: [download from nodejs.org](https://nodejs.org/en/)
+* **Go** -- 1.12 or later, to run many tools: ABI generation, tests, coverage, our contract CLI.
+* **Node** and **NPM** -- to run `sol-compiler` and `solium`
+* **Docker** -- to run 0x's a nicely-packaged `geth` node, for coverage and some end-to-end tests.
 
-- Run `npm install`
+## Setting up a clean environment
+
+- Install basic utilities for your system: `curl`, `git`, `make`, `gcc`.
+
+- Install Go
+    - [Download the latest binary distribution](https://golang.org/dl/)
+    - [Follow the installation instructions](https://golang.org/doc/install#install)
+    - Check that the version is 1.12 or later with `go version`
+
+- Install Node and npm
+    - [Download from nodejs.org](https://nodejs.org/en/)
+    - In this repo's working directory, do `npm install` to get local packages
+
+- Install Docker
+    - A very standard Docker installation is sufficient:
+        - On Windows: Instructions [here](https://docs.docker.com/docker-for-windows/install/)
+        - On MacOS: Instructions [here](https://docs.docker.com/docker-for-mac/install/)
+        - On Linux: `curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh`
 
 ## Dockerized environment
 
-There is also a dockerized version of the development environment. You can open it with `make run-dev-container`. It's not intended to handle all development workflows, but you should be able to successfully run `make test` in it, and use it to troubleshoot your host environment if necessary.
+There is also a dockerized version of our development environment. If you have docker set up, you can open it with `make run-dev-container`. It's not intended to handle all development workflows, but you should be able to successfully run `make test` in it, and use it to troubleshoot your host environment if necessary. (That container is built from the Dockerfile in the root of this repository.)
 
-# Running tests
+# Building and Testing
 
-Test with `make test`.
+## Quickstart
 
-To get a coverage report, run `make coverage`. Note that it has a few obvious false negatives, like the ReserveDollar constructor, interface definitions, and the `_;` line in modifiers.
+With an environment set up as above,
+
+- To build and run unit tests: `make test`
+- To build smart contracts and their Go bindings: `make abi/bindings`
+- To compute coverage:
+    - In a separate long-lived terminal, `make run-devnet`
+    - `make coverage` (You will get a lot of warnings saying "We'll just skip that trace", even things are working right.)
+- To deploy and interact with the smart contracts
+    - In a separate long-lived terminal, `make run-devnet`
+    - `make res`
+    - `res --help`
+    - `$(res deploy)`
+    - Interact using res, e.g.:
+    ``` bash
+    res changeMinter @1
+    res mint --from @1 @2 123
+    res balanceOf @2
+    ```
+
+## Makefile
+
+The root Makefile provides entry points for building and testing:
+
+- `make fmt`: Use [ethlint][] to lint and format smart contracts.
+- `make test`: Run tests for the smart contracts
+- `make coverage`: Compute test coverage (where possible) for the smart contracts. Note that it has a few obvious false negatives, like the ReserveDollar constructor, interface definitions, and the `_;` line in modifiers. Needs a local `geth` node listening at `localhost:8545`; see `make run-devnet`.
+- `make res`: Build and install the `res` CLI, for deploying and exercising with the Reserve Dollar smart contracts. `res` needs a local `geth` node listening at `localhost:8545`; see `make run-devnet`.
+- `make run-devnet`: Run a local ethereum node suitable for testing and coverage.
+- `make run-dev-container`: Open dockerized development environment.
+
+## More on `make run-devnet`
+Some of our tools -- `res` and `make coverage` -- expect to interact with a local [geth][go-etherum] node at `http://localhost:8545`. Notably `make test` does _not_ require this; it uses a faster, in-memory EVM implementation.
+
+The command `make run-devnet` sets up a local `geth` node specialized for testing. `make run-devnet` will run the [`0xorg/devnet` container][devnet] and have it listen on port 8545. This command produces lots of live output to stdout, which is frequently useful. We recommend either running it in its own terminal, or at least piping its output somewhere so that you can `tail -f` it.
+
+[devnet]: https://github.com/0xProject/0x-monorepo/tree/development/packages/devnet
+[go-ethereum]: https://github.com/ethereum/go-ethereum/wiki/geth
+[ethlint]: https://www.npmjs.com/package/ethlint
+
+## Directory Layout Highlights
+- `contracts/`: The Reserve Dollar smart contracts
+    - `ReserveDollar.sol`: The main token implementation contract.
+    -  `ReserveDollarEternalStorage.sol`: Static implementation of the [Eternal Storage][] pattern for `ReserveDollar`
+    - `MintAndBurnAdmin.sol`: Contract intended to hold the `minter` role for `ReserveDollar`.
+    - `ReserveDollarV2.sol`: A tiny "upgraded" ReserveDollar contract, used here to test migration workflows.
+    - `zepplin/SafeMath.sol`: The OpenZepplin SafeMath library.
+- `tests/`: Unit tests for the Reserve Dollar smart contracts
+- `cmd/res/` A CLI for interacting with the Reserve Dollar smart contract.
+
+
+- `soltools/`: Go-to-JavaScript bridge, to wrap 0x's solidity tools.
+- `artifacts/`: build destination for smart contracts
+- `abi/`: build directory Go bindings for the smart contracts get built.
+
+
+- `README.md`: You're reading it.
+- `Makefile`: Entry points for building and testing, as [above](#Makefile).
+- `Dockerfile`: Dockerfile for the dockerized dev environment 
+- ... and a handful of other source-tree configuration files
+
