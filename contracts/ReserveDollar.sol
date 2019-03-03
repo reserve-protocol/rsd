@@ -29,9 +29,9 @@ interface IERC20 {
 contract ReserveDollar is IERC20 {
     using SafeMath for uint256;
 
-    //
+
     // DATA
-    //
+
 
     // Non-constant-sized data
     ReserveDollarEternalStorage internal data;
@@ -52,9 +52,9 @@ contract ReserveDollar is IERC20 {
     address public freezer;
     address public nominatedOwner;
 
-    //
+
     // EVENTS
-    //
+
 
     // Auth roles changed
     event OwnerChanged(address indexed newOwner);
@@ -74,9 +74,9 @@ contract ReserveDollar is IERC20 {
     event Unfrozen(address indexed freezer, address indexed account);
     event Wiped(address indexed freezer, address indexed wiped);
 
-    //
+
     // FUNCTIONALITY
-    //
+
 
     /// Initialize critical fields.
     constructor() public {
@@ -91,9 +91,9 @@ contract ReserveDollar is IERC20 {
         return address(data);
     }
 
-    //
+
     // ==== Admin functions ====
-    //
+
 
     /// Modifies a function to only run if sent by `role`.
     modifier only(address role) {
@@ -215,9 +215,8 @@ contract ReserveDollar is IERC20 {
     }
 
 
-    //
     // ==== Token transfers, allowances, minting, and burning ====
-    //
+
 
     /// @return how many tokens exist.
     function totalSupply() external view returns (uint256) {

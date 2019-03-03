@@ -6,9 +6,7 @@ import "./ReserveDollar.sol";
 /// Can only execute proposals after a 12-hour confirmation delay.
 contract MintAndBurnAdmin {
 
-    //
     // TYPES
-    //
 
     struct Proposal {
         address addr;
@@ -17,9 +15,7 @@ contract MintAndBurnAdmin {
         bool isMint;
     }
 
-    //
     // DATA
-    //
 
     ReserveDollar public reserve;
     uint256 public constant delay = 12 hours;
@@ -29,17 +25,13 @@ contract MintAndBurnAdmin {
     mapping(uint256 => Proposal) public proposals;
     mapping(uint256 => bool) public completed;
 
-    //
     // EVENTS
-    //
 
     event ProposalCreated(uint256 index, address indexed addr, uint256 value, bool isMint, uint256 delayUntil);
     event ProposalConfirmed(uint256 index, address indexed addr, uint256 value, bool isMint);
     event ProposalCancelled(uint256 index, address indexed addr, uint256 value, bool isMint);
 
-    //
     // FUNCTIONALITY
-    //
 
     constructor(address reserveDollar) public {
         reserve = ReserveDollar(reserveDollar);
