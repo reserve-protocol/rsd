@@ -43,6 +43,12 @@ type TestSuite struct {
 // not revert. It also takes an extra error argument, and checks that the
 // error is nil. This signature allows the function to directly wrap our
 // abigen'd mutator calls.
+//
+// requireTx returns a closure that can be used to assert the list of events
+// that were emitted during the transaction. This API is a bit weird -- it would
+// be more natural to pass the events in to the `requireTx` call itself -- but
+// this is the cleanest way that is compatible with directly wrapping the abigen'd
+// calls, without using intermediate placeholder variables in calling code.
 func (s *TestSuite) requireTx(tx *types.Transaction, err error) func(assertEvent ...fmt.Stringer) {
 	receipt := s._requireTxStatus(tx, err, types.ReceiptStatusSuccessful)
 
@@ -102,12 +108,14 @@ func (s *TestSuite) assertTotalSupply(amount *big.Int) {
 	s.Equal(amount.String(), totalSupply.String())
 }
 
+// TODO: delete
 type ReserveDollarApproval struct {
 	From  common.Address
 	To    common.Address
 	Value *big.Int
 }
 
+// TODO: delete
 // assertApprovalEvents asserts that the sequence of Approval events emitted by
 // the ReserveDollar contract exactly matches the list of expected valued in
 // `expected`.
@@ -132,10 +140,12 @@ func (s *ReserveDollarSuite) assertApprovalEvents(expected []ReserveDollarApprov
 	}
 }
 
+// TODO: delete
 func (s *ReserveDollarSuite) assertZeroApprovalEvents() {
 	s.assertApprovalEvents(make([]ReserveDollarApproval, 0))
 }
 
+// TODO: delete
 type ReserveDollarTransfer struct {
 	From  common.Address
 	To    common.Address
