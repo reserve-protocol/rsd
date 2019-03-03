@@ -28,8 +28,10 @@ contract ReserveDollarEternalStorage {
      */
 
     address public owner; // TODO: is it cheaper if this is private with an explicit public accessor?
+    address public escapeHatch;
 
     event OwnershipTransferred(address oldOwner, address newOwner);
+    event EscapeHatchTransferred(address oldEscapeHatch, address newEscapeHatch);
 
     /**
      * @dev Throws if called by any account other than the owner.
@@ -43,9 +45,16 @@ contract ReserveDollarEternalStorage {
      * @dev Allows the current owner to transfer control of the contract to a newOwner.
      * @param newOwner The address to transfer ownership to.
      */
-    function transferOwnership(address newOwner) external onlyOwner {
+    function transferOwnership(address newOwner) external {
+        require(msg.sender == owner || msg.sender == escapeHatch);
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
+    }
+
+    function transferEscapeHatch(address newEscapeHatch) external {
+        require(msg.sender == escapeHatch);
+        emit EscapeHatchTransferred(escapeHatch, newEscapeHatch);
+        escapeHatch = newEscapeHatch;
     }
 
     constructor() public {
