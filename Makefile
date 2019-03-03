@@ -15,6 +15,9 @@ coverage: abi/bindings
 fmt:
 	npx solium -d contracts/ --fix
 
+res: cmd/res/res.go
+	go build ./cmd/res
+
 run-dev-container:
 	docker run \
 		--rm \
