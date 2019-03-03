@@ -80,7 +80,12 @@ func main() {
 				"flags": func(inputs abi.Arguments) string {
 					result := make([]string, len(inputs))
 					for i := range result {
-						result[i] = "%v"
+						switch inputs[i].Type.String() {
+						case "string":
+							result[i] = "%q"
+						default:
+							result[i] = "%v"
+						}
 					}
 					return strings.Join(result, ", ")
 				},

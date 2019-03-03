@@ -43,8 +43,21 @@ type TestSuite struct {
 // not revert. It also takes an extra error argument, and checks that the
 // error is nil. This signature allows the function to directly wrap our
 // abigen'd mutator calls.
-func (s *TestSuite) requireTx(tx *types.Transaction, err error) {
-	s._requireTxStatus(tx, err, types.ReceiptStatusSuccessful)
+func (s *TestSuite) requireTx(tx *types.Transaction, err error) func(assertEvent ...fmt.Stringer) {
+	receipt := s._requireTxStatus(tx, err, types.ReceiptStatusSuccessful)
+
+	// return a closure that can take a varargs list of events,
+	// and assert that the transaction generates those events.
+	return func(assertEvent ...fmt.Stringer) {
+		if s.Equal(len(assertEvent), len(receipt.Logs), "did not get the expected number of events") {
+			for i, wantEvent := range assertEvent {
+				gotEvent, err := s.reserve.ParseLog(receipt.Logs[i])
+				if s.NoErrorf(err, "parsing event %v", i) {
+					s.Equal(wantEvent.String(), gotEvent.String())
+				}
+			}
+		}
+	}
 }
 
 // requireTxFails is like requireTx, but it requires that the transaction either
@@ -59,12 +72,13 @@ func (s *TestSuite) requireTxFails(tx *types.Transaction, err error) {
 	s._requireTxStatus(tx, err, types.ReceiptStatusFailed)
 }
 
-func (s *TestSuite) _requireTxStatus(tx *types.Transaction, err error, status uint64) {
+func (s *TestSuite) _requireTxStatus(tx *types.Transaction, err error, status uint64) *types.Receipt {
 	s.Require().NoError(err)
 	s.Require().NotNil(tx)
 	receipt, err := bind.WaitMined(context.Background(), s.node, tx)
 	s.Require().NoError(err)
 	s.Require().Equal(status, receipt.Status)
+	return receipt
 }
 
 // assertBalance asserts that the Reserve Dollar balance of `address` is `amount`.

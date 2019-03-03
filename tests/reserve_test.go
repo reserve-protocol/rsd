@@ -104,21 +104,12 @@ func (s *ReserveDollarSuite) TestChangeName() {
 	const newName, newSymbol = "Flamingo", "MGO"
 	s.requireTx(
 		s.reserve.ChangeName(s.signer, newName, newSymbol),
+	)(
+		abi.ReserveDollarNameChanged{
+			NewName:   newName,
+			NewSymbol: newSymbol,
+		},
 	)
-
-	// Check for ChangeName event.
-	nameChangeIter, err := s.reserve.FilterNameChanged(nil)
-	if s.NoError(err) {
-		events := 0
-		for nameChangeIter.Next() {
-			events++
-			s.Equal(newName, nameChangeIter.Event.NewName)
-			s.Equal(newSymbol, nameChangeIter.Event.NewSymbol)
-		}
-		s.Equal(1, events, "expected exactly one NameChanged event")
-		s.NoError(nameChangeIter.Error())
-		s.NoError(nameChangeIter.Close())
-	}
 
 	// Check new name.
 	name, err := s.reserve.Name(nil)
