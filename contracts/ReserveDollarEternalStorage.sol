@@ -57,8 +57,9 @@ contract ReserveDollarEternalStorage {
         escapeHatch = newEscapeHatch;
     }
 
-    constructor() public {
+    constructor(address escapeHatchAddress) public {
         owner = msg.sender;
+        escapeHatch = escapeHatchAddress;
     }
 
     /**

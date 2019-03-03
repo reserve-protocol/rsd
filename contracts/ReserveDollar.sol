@@ -62,7 +62,7 @@ contract ReserveDollar is IERC20 {
     event FreezerChanged(address indexed newFreezer);
 
     constructor() public {
-        data = new ReserveDollarEternalStorage();
+        data = new ReserveDollarEternalStorage(msg.sender);
         owner = msg.sender;
         pauser = msg.sender;
     }
