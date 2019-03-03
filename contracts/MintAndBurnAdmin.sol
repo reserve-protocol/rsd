@@ -5,14 +5,10 @@ import "./ReserveDollar.sol";
 /// @title Time-delayed admin contract for the Reserve Dollar
 /// Can only execute proposals after a 12-hour confirmation delay.
 contract MintAndBurnAdmin {
-    ReserveDollar public reserve;
-    uint256 public constant delay = 12 hours;
-    address public admin;
 
-    constructor(address reserveDollar) public {
-        reserve = ReserveDollar(reserveDollar);
-        admin = msg.sender;
-    }
+    //
+    // TYPES
+    //
 
     struct Proposal {
         address addr;
@@ -20,13 +16,35 @@ contract MintAndBurnAdmin {
         uint256 time;
         bool isMint;
     }
+
+    //
+    // DATA
+    //
+
+    ReserveDollar public reserve;
+    uint256 public constant delay = 12 hours;
+    address public admin;
+
     uint256 public nextProposal;
     mapping(uint256 => Proposal) public proposals;
     mapping(uint256 => bool) public completed;
 
+    //
+    // EVENTS
+    //
+
     event ProposalCreated(uint256 index, address indexed addr, uint256 value, bool isMint, uint256 delayUntil);
     event ProposalConfirmed(uint256 index, address indexed addr, uint256 value, bool isMint);
     event ProposalCancelled(uint256 index, address indexed addr, uint256 value, bool isMint);
+
+    //
+    // FUNCTIONALITY
+    //
+
+    constructor(address reserveDollar) public {
+        reserve = ReserveDollar(reserveDollar);
+        admin = msg.sender;
+    }
 
     /// Propose a new mint or burn, which can be confirmed after 12 hours.
     function propose(address addr, uint256 value, bool isMint) external {
@@ -48,18 +66,6 @@ contract MintAndBurnAdmin {
         emit ProposalCreated(nextProposal, addr, value, isMint, delayUntil);
 
         nextProposal++;
-    }
-
-    /// Throw unless the given proposal exists and matches `addr`, `value`, and `isMint`.
-    function requireMatchingProposal(uint256 index, address addr, uint256 value, bool isMint) private view {
-        require(index < nextProposal, "no such proposal");
-
-        // Slither reports "dangerous strict equality" for each of these, but it's OK.
-        // These equalities are to confirm that the proposal entered is equal to the
-        // matching previous proposal. We're vetting data entry; strict equality is appropriate.
-        require(proposals[index].addr == addr, "addr mismatched");
-        require(proposals[index].value == value, "value mismatched");
-        require(proposals[index].isMint == isMint, "isMint mismatched");
     }
 
     /// Cancel a proposed mint or burn.
@@ -94,5 +100,17 @@ contract MintAndBurnAdmin {
         } else {
             reserve.burnFrom(addr, value);
         }
+    }
+
+    /// Throw unless the given proposal exists and matches `addr`, `value`, and `isMint`.
+    function requireMatchingProposal(uint256 index, address addr, uint256 value, bool isMint) private view {
+        require(index < nextProposal, "no such proposal");
+
+        // Slither reports "dangerous strict equality" for each of these, but it's OK.
+        // These equalities are to confirm that the proposal entered is equal to the
+        // matching previous proposal. We're vetting data entry; strict equality is appropriate.
+        require(proposals[index].addr == addr, "addr mismatched");
+        require(proposals[index].value == value, "value mismatched");
+        require(proposals[index].isMint == isMint, "isMint mismatched");
     }
 }

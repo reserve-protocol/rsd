@@ -29,40 +29,71 @@ interface IERC20 {
 contract ReserveDollar is IERC20 {
     using SafeMath for uint256;
 
+    //
+    // DATA
+    //
+
+    // Non-constant-sized data
     ReserveDollarEternalStorage internal data;
 
-    function getEternalStorageAddress() public view returns(address) {
-        return address(data);
-    }
-
-    uint256 private _totalSupply;
-
+    // Basic token data
     string public name = "Reserve Dollar";
     string public symbol = "RSVD";
     uint8 public constant decimals = 18;
+    uint256 private _totalSupply;
 
+    // Paused data
     bool public paused;
 
-
-    // ==== auth ====
-
+    // Auth roles
     address public owner;
     address public minter;
     address public pauser;
     address public freezer;
     address public nominatedOwner;
 
+    //
+    // EVENTS
+    //
+
+    // Auth roles changed
     event OwnerChanged(address indexed newOwner);
     event MinterChanged(address indexed newMinter);
     event PauserChanged(address indexed newPauser);
     event FreezerChanged(address indexed newFreezer);
 
-    /// Initialize with absolutely critical fields already set.
+    // Pause events
+    event Paused(address indexed account);
+    event Unpaused(address indexed account);
+
+    // Name change event
+    event NameChanged(string newName, string newSymbol);
+
+    // Law enforcement events
+    event Frozen(address indexed freezer, address indexed account);
+    event Unfrozen(address indexed freezer, address indexed account);
+    event Wiped(address indexed freezer, address indexed wiped);
+
+    //
+    // FUNCTIONALITY
+    //
+
+    /// Initialize critical fields.
     constructor() public {
         data = new ReserveDollarEternalStorage(msg.sender);
         owner = msg.sender;
         pauser = msg.sender;
+        // Other roles deliberately default to the zero address.
     }
+
+    /// Accessor for eternal storage contract address.
+    function getEternalStorageAddress() public view returns(address) {
+        return address(data);
+    }
+
+    //
+    // ==== Admin functions ====
+    //
 
     /// Modifies a function to only run if sent by `role`.
     modifier only(address role) {
@@ -123,20 +154,12 @@ contract ReserveDollar is IERC20 {
         data.transferOwnership(newOwner);
     }
 
-
-    // ==== admin functions ====
-
-    event NameChanged(string newName, string newSymbol);
-
     /// Change the name and ticker symbol of this token.
     function changeName(string memory newName, string memory newSymbol) public only(owner) {
         name = newName;
         symbol = newSymbol;
         emit NameChanged(newName, newSymbol);
     }
-
-    event Paused(address indexed account);
-    event Unpaused(address indexed account);
 
     /// Pause the contract.
     function pause() external only(pauser) {
@@ -155,10 +178,6 @@ contract ReserveDollar is IERC20 {
         require(!paused, "contract is paused");
         _;
     }
-
-    event Frozen(address indexed freezer, address indexed account);
-    event Unfrozen(address indexed freezer, address indexed account);
-    event Wiped(address indexed freezer, address indexed wiped);
 
     /// Freeze token transactions for a particular address.
     function freeze(address who) external only(freezer) {
@@ -196,7 +215,9 @@ contract ReserveDollar is IERC20 {
     }
 
 
-    // ==== token transfers, allowances, minting, and burning ====
+    //
+    // ==== Token transfers, allowances, minting, and burning ====
+    //
 
     /// @return how many tokens exist.
     function totalSupply() external view returns (uint256) {
