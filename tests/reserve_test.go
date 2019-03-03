@@ -134,7 +134,7 @@ func (s *ReserveDollarSuite) TestChangeName() {
 func (s *ReserveDollarSuite) TestChangeNameFailsForNonOwner() {
 	const newName, newSymbol = "Flamingo", "MGO"
 	s.requireTxFails(
-		s.reserve.ChangeName(signer(s.account[3]), newName, newSymbol),
+		s.reserve.ChangeName(signer(s.account[2]), newName, newSymbol),
 	)
 }
 
@@ -350,6 +350,20 @@ func (s *ReserveDollarSuite) TestDecreaseAllowanceUnderflow() {
 	s.assertAllowance(owner.address(), spender.address(), initialAmount)
 }
 
+func (s *ReserveDollarSuite) TestDecreaseAllowanceSpenderFrozen() {
+	spender := s.account[1]
+	owner := s.account[2]
+
+	// Owner approves spender for initial amount.
+	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), bigInt(10)))
+
+	// Freeze spender.
+	s.requireTx(s.reserve.Freeze(s.signer, spender.address()))
+
+	// Owner decreases allowance fails because of spender is frozen.
+	s.requireTxFails(s.reserve.DecreaseAllowance(signer(owner), spender.address(), bigInt(2)))
+}
+
 func (s *ReserveDollarSuite) TestPausing() {
 	banker := s.account[1]
 	amount := bigInt(1000)
@@ -533,13 +547,17 @@ func (s *ReserveDollarSuite) TestFreezeApprovals() {
 func (s *ReserveDollarSuite) TestFreezeTransferFrom() {
 	target := s.account[1]
 	recipient := s.account[2]
+	middleman := s.account[3]
 
-	// Approve target to transfer funds.
-	initialAmount := bigInt(3)
+	// Approve target and middleman to transfer funds.
+	initialAmount := bigInt(12)
 	s.requireTx(s.reserve.Mint(s.signer, s.account[0].address(), initialAmount))
 	s.requireTx(s.reserve.Approve(s.signer, target.address(), initialAmount))
+	s.requireTx(s.reserve.Approve(s.signer, middleman.address(), initialAmount))
 	s.assertAllowance(s.account[0].address(), target.address(), initialAmount)
+	s.assertAllowance(s.account[0].address(), middleman.address(), initialAmount)
 
+	////////////////////////////////////
 	// Freeze target.
 	s.requireTx(s.reserve.Freeze(s.signer, target.address()))
 
@@ -551,23 +569,55 @@ func (s *ReserveDollarSuite) TestFreezeTransferFrom() {
 	s.requireTx(s.reserve.Unfreeze(s.signer, target.address()))
 
 	// Unfrozen account should now be able to call transferFrom.
-	transferAmount := bigInt(3)
-	s.requireTx(s.reserve.TransferFrom(signer(target), s.account[0].address(), recipient.address(), transferAmount))
-	s.assertBalance(recipient.address(), transferAmount)
+	s.requireTx(s.reserve.TransferFrom(signer(target), s.account[0].address(), recipient.address(), bigInt(2)))
+	s.assertBalance(recipient.address(), bigInt(2))
+
+	////////////////////////////////////
+	// Freeze middleman
+	s.requireTx(s.reserve.Freeze(s.signer, middleman.address()))
+
+	// Frozen account shouldn't be able to call transferFrom.
+	s.requireTxFails(s.reserve.TransferFrom(signer(middleman), s.account[0].address(), recipient.address(), bigInt(5)))
+	s.assertBalance(recipient.address(), bigInt(2))
+
+	// Unfreeze middleman.
+	s.requireTx(s.reserve.Unfreeze(s.signer, middleman.address()))
+
+	// Unfrozen account should now be able to call transferFrom.
+	s.requireTx(s.reserve.TransferFrom(signer(middleman), s.account[0].address(), recipient.address(), bigInt(5)))
+	s.assertBalance(recipient.address(), bigInt(7))
+
+	////////////////////////////////////
+	// Freeze recipient.
+	s.requireTx(s.reserve.Freeze(s.signer, recipient.address()))
+
+	// Shouldn't be able to call transferFrom to a frozen account.
+	s.requireTxFails(s.reserve.TransferFrom(signer(target), s.account[0].address(), recipient.address(), initialAmount))
+	s.assertBalance(recipient.address(), bigInt(7))
+
+	// Unfreeze recipient.
+	s.requireTx(s.reserve.Unfreeze(s.signer, recipient.address()))
+
+	// Unfrozen account should now be able to call transferFrom.
+	s.requireTx(s.reserve.TransferFrom(signer(target), s.account[0].address(), recipient.address(), bigInt(3)))
+	s.assertBalance(recipient.address(), bigInt(10))
 
 	// Check for Transfer events.
 	s.assertTransferEvents([]ReserveDollarTransfer{
 		mintingTransfer(s.account[0].address(), initialAmount),
-		{From: s.account[0].address(), To: recipient.address(), Value: transferAmount},
+		{From: s.account[0].address(), To: recipient.address(), Value: bigInt(2)},
+		{From: s.account[0].address(), To: recipient.address(), Value: bigInt(5)},
+		{From: s.account[0].address(), To: recipient.address(), Value: bigInt(3)},
 	})
 
 	// Check for Approval events.
-	remainingAmount := bigInt(0)
-	remainingAmount = remainingAmount.Sub(initialAmount, transferAmount)
 
 	s.assertApprovalEvents([]ReserveDollarApproval{
 		{From: s.account[0].address(), To: target.address(), Value: initialAmount},
-		{From: s.account[0].address(), To: target.address(), Value: remainingAmount},
+		{From: s.account[0].address(), To: middleman.address(), Value: initialAmount},
+		{From: s.account[0].address(), To: target.address(), Value: bigInt(12 - 2)},
+		{From: s.account[0].address(), To: middleman.address(), Value: bigInt(12 - 5)},
+		{From: s.account[0].address(), To: target.address(), Value: bigInt(12 - 2 - 3)},
 	})
 }
 
@@ -645,6 +695,10 @@ func (s *ReserveDollarSuite) TestWiping() {
 	// Give target funds.
 	amount := bigInt(100)
 	s.requireTx(s.reserve.Mint(s.signer, target.address(), amount))
+
+	// Should not be able to wipe zero address
+	s.requireTx(s.reserve.Freeze(s.signer, common.BigToAddress(bigInt(0))))
+	s.requireTxFails(s.reserve.Wipe(s.signer, target.address()))
 
 	// Should not be able to wipe target before freezing them.
 	s.requireTxFails(s.reserve.Wipe(s.signer, target.address()))
@@ -835,12 +889,55 @@ func (s *ReserveDollarSuite) TestTransferFromWouldUnderflow() {
 	})
 }
 
-func (s *ReserveDollarSuite) TestPauseFailsForNonPauser() {
-	s.requireTxFails(s.reserve.Pause(signer(s.account[1])))
+///////////////////////
 
-	//isPaused, _ := s.reserve.ReserveDollarCaller.Paused(nil)
-	//s.Equal(false, isPaused)
+func (s *ReserveDollarSuite) TestPauseFailsForNonPauser() {
+	s.requireTxFails(s.reserve.Pause(signer(s.account[2])))
 }
+
+func (s *ReserveDollarSuite) TestUnpauseFailsForNonPauser() {
+	s.requireTx(s.reserve.Pause(s.signer))
+	s.requireTxFails(s.reserve.Unpause(signer(s.account[1])))
+}
+
+func (s *ReserveDollarSuite) TestChangePauserFailsForNonPauser() {
+	s.requireTxFails(s.reserve.ChangePauser(signer(s.account[2]), s.account[1].address()))
+}
+
+///////////////////////
+
+func (s *ReserveDollarSuite) TestFreezeFailsForNonFreezer() {
+	criminal := common.BigToAddress(bigInt(1))
+	s.requireTxFails(s.reserve.Freeze(signer(s.account[2]), criminal))
+}
+
+func (s *ReserveDollarSuite) TestUnfreezeFailsForNonFreezer() {
+	criminal := common.BigToAddress(bigInt(1))
+	s.requireTx(s.reserve.Freeze(s.signer, criminal))
+	s.requireTxFails(s.reserve.Unfreeze(signer(s.account[1]), criminal))
+}
+
+func (s *ReserveDollarSuite) TestChangeFreezerFailsForNonFreezer() {
+	s.requireTxFails(s.reserve.ChangeFreezer(signer(s.account[2]), s.account[1].address()))
+}
+
+func (s *ReserveDollarSuite) TestWipeFailsForNonFreezer() {
+	criminal := common.BigToAddress(bigInt(1))
+	s.requireTxFails(s.reserve.Wipe(signer(s.account[2]), criminal))
+}
+
+///////////////////////
+
+func (s *ReserveDollarSuite) TestMintFailsForNonMinter() {
+	recipient := common.BigToAddress(bigInt(1))
+	s.requireTxFails(s.reserve.Mint(signer(s.account[2]), recipient, bigInt(7)))
+}
+
+func (s *ReserveDollarSuite) TestChangeMinterFailsForNonMinter() {
+	s.requireTxFails(s.reserve.ChangeMinter(signer(s.account[2]), s.account[1].address()))
+}
+
+///////////////////////
 
 func (s *ReserveDollarSuite) TestUpgrade() {
 	recipient := s.account[1]
