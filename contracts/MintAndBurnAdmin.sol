@@ -51,7 +51,7 @@ contract MintAndBurnAdmin {
     }
 
     /// Throw unless the given proposal exists and matches `addr`, `value`, and `isMint`.
-    function requireMatchingProposal(uint256 index, address addr, uint256 value, bool isMint) view private {
+    function requireMatchingProposal(uint256 index, address addr, uint256 value, bool isMint) private view {
         require(index < nextProposal, "no such proposal");
 
         // Slither reports "dangerous strict equality" for each of these, but it's OK.

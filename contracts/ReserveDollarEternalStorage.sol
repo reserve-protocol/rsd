@@ -35,14 +35,14 @@ contract ReserveDollarEternalStorage {
 
     /// Set `owner`.
     function transferOwnership(address newOwner) external {
-        require(msg.sender == owner || msg.sender == escapeHatch);
+        require(msg.sender == owner || msg.sender == escapeHatch, "not authorized");
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
 
     /// Set `escape hatch`.
     function transferEscapeHatch(address newEscapeHatch) external {
-        require(msg.sender == escapeHatch);
+        require(msg.sender == escapeHatch, "not authorized");
         emit EscapeHatchTransferred(escapeHatch, newEscapeHatch);
         escapeHatch = newEscapeHatch;
     }

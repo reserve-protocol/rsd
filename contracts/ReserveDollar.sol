@@ -163,7 +163,11 @@ contract ReserveDollar is IERC20 {
     /// Freeze token transactions for a particular address.
     function freeze(address who) external only(freezer) {
         require(data.frozenTime(who) == 0, "account already frozen");
-        data.setFrozenTime(who, now); // solium-disable-line security/no-block-members
+        // In `wipe` we use block.timestamp to check that enough time has passed since this
+        // freeze happened. That required time delay -- 4 weeks -- is a long time relative
+        // to the maximum drift of block.timestamp, so it is fine to trust the miner here.
+        // solium-disable-next-line security/no-block-members
+        data.setFrozenTime(who, now);
         emit Frozen(freezer, who);
     }
 
@@ -183,6 +187,9 @@ contract ReserveDollar is IERC20 {
     /// Burn the balance of an account that has been frozen for at least 4 weeks.
     function wipe(address who) external only(freezer) {
         require(data.frozenTime(who) > 0, "cannot wipe unfrozen account");
+        // Use block.timestamp to check that enough time has passed. 4 weeks is a long time relative to
+        // the maximum drift of block.timestamp, so it is fine to trust the miner here.
+        // solium-disable-next-line security/no-block-members
         require(data.frozenTime(who) + 4 weeks < now, "cannot wipe frozen account before 4 weeks");
         _burn(who, data.balance(who));
         emit Wiped(freezer, who);
