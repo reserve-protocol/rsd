@@ -94,9 +94,8 @@ contract ReserveDollar is IERC20 {
         emit FreezerChanged(newFreezer);
     }
 
-    /// Nominate a new `owner`.
-    /// We want to ensure that `owner` is always valid, so we don't actually change `owner`
-    /// to `nominatedOwner` until `nominatedOwner` calls `acceptOwnership`.
+    /// Nominate a new `owner`.  We want to ensure that `owner` is always valid, so we don't
+    /// actually change `owner` to `nominatedOwner` until `nominatedOwner` calls `acceptOwnership`.
     function nominateNewOwner(address nominee) external only(owner) {
         nominatedOwner = nominee;
     }
