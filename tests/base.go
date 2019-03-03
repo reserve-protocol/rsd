@@ -35,7 +35,8 @@ type TestSuite struct {
 		bind.ContractBackend
 		TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
 	}
-	reserve *abi.ReserveDollar
+	reserve        *abi.ReserveDollar
+	reserveAddress common.Address
 }
 
 // requireTx requires that a transaction is successfully mined and does

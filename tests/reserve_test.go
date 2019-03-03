@@ -21,8 +21,6 @@ func TestReserveDollar(t *testing.T) {
 
 type ReserveDollarSuite struct {
 	TestSuite
-
-	reserveAddress common.Address
 }
 
 var (
