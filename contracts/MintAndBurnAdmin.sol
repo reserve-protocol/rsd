@@ -61,6 +61,9 @@ contract MintAndBurnAdmin {
      */
     function requireMatchingProposal(uint256 index, address addr, uint256 value, bool isMint) view private {
         require(index < nextProposal, "no such proposal");
+        // Slither reports "dangerous strict equality" for all of these, but it's fine:
+        // These equalities are to confirm that the proposal entered is equal to the
+        // matching previous proposal, so strict equality is appropriate.
         require(proposals[index].addr == addr, "addr mismatched");
         require(proposals[index].value == value, "value mismatched");
         require(proposals[index].isMint == isMint, "isMint mismatched");
