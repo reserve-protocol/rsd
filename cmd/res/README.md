@@ -6,8 +6,9 @@ A CLI for interacting with the Reserve Dollar smart contract.
 This is designed for testing purposes. The goal is to make it easier to run small experiments
 on the Reserve Dollar from the command line, without needing to write any code.
 
-When we deploy the Reserve Dollar for real, we will use similar code, but it will go through
-a hardware wallet.
+This is not the code we intend to use for deployment of the production copy of the Reserve
+Dollar, nor for ongoing ops on the production Reserve Dollar. That code will use hardware
+wallets and a more methodical confirmation process.
 
 The CLI includes access to all of the public functions on the Reserve Dollar.
 

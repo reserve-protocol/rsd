@@ -75,7 +75,8 @@ func (s *TestSuite) requireTxFails(tx *types.Transaction, err error) {
 		return
 	}
 
-	s._requireTxStatus(tx, err, types.ReceiptStatusFailed)
+	receipt := s._requireTxStatus(tx, err, types.ReceiptStatusFailed)
+	s.Equal(0, len(receipt.Logs), "Zero logs should be generated for a failed transaction")
 }
 
 func (s *TestSuite) _requireTxStatus(tx *types.Transaction, err error, status uint64) *types.Receipt {
@@ -106,74 +107,6 @@ func (s *TestSuite) assertTotalSupply(amount *big.Int) {
 	totalSupply, err := s.reserve.TotalSupply(nil)
 	s.NoError(err)
 	s.Equal(amount.String(), totalSupply.String())
-}
-
-// TODO: delete
-type ReserveDollarApproval struct {
-	From  common.Address
-	To    common.Address
-	Value *big.Int
-}
-
-// TODO: delete
-// assertApprovalEvents asserts that the sequence of Approval events emitted by
-// the ReserveDollar contract exactly matches the list of expected valued in
-// `expected`.
-func (s *ReserveDollarSuite) assertApprovalEvents(expected []ReserveDollarApproval) {
-	approvalIter, err := s.reserve.FilterApproval(nil,
-		[]common.Address{},
-		[]common.Address{},
-	)
-	if s.NoError(err) {
-		events := 0
-		for approvalIter.Next() {
-			if events < len(expected) {
-				s.Equal(expected[events].From, approvalIter.Event.From)
-				s.Equal(expected[events].To, approvalIter.Event.To)
-				s.Equal(expected[events].Value.String(), approvalIter.Event.Value.String(), "approval value should be %d", expected[events].Value)
-			}
-			events++
-		}
-		s.Equal(len(expected), events, "expected %d Approval events", len(expected))
-		s.NoError(approvalIter.Error())
-		s.NoError(approvalIter.Close())
-	}
-}
-
-// TODO: delete
-func (s *ReserveDollarSuite) assertZeroApprovalEvents() {
-	s.assertApprovalEvents(make([]ReserveDollarApproval, 0))
-}
-
-// TODO: delete
-type ReserveDollarTransfer struct {
-	From  common.Address
-	To    common.Address
-	Value *big.Int
-}
-
-// assertTransferEvents asserts that the sequence of Transfer events emitted by
-// the ReserveDollar contract exactly matches the list of expected valued in
-// `expected`.
-func (s *ReserveDollarSuite) assertTransferEvents(expected []ReserveDollarTransfer) {
-	transferIter, err := s.reserve.FilterTransfer(nil,
-		[]common.Address{},
-		[]common.Address{},
-	)
-	if s.NoError(err) {
-		events := 0
-		for transferIter.Next() {
-			if events < len(expected) {
-				s.Equal(expected[events].From, transferIter.Event.From)
-				s.Equal(expected[events].To, transferIter.Event.To)
-				s.Equal(expected[events].Value.String(), transferIter.Event.Value.String())
-			}
-			events++
-		}
-		s.Equal(len(expected), events, "expected %d Transfer events", len(expected))
-		s.NoError(transferIter.Error())
-		s.NoError(transferIter.Close())
-	}
 }
 
 // createSlowCoverageNode creates a connection to a local geth node that passes through

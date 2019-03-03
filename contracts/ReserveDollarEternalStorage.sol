@@ -24,8 +24,14 @@ contract ReserveDollarEternalStorage {
     address public owner; // TODO: https://github.com/reserve-protocol/reserve-dollar/issues/8
     address public escapeHatch;
 
-    event OwnershipTransferred(address oldOwner, address newOwner);
-    event EscapeHatchTransferred(address oldEscapeHatch, address newEscapeHatch);
+    event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
+    event EscapeHatchTransferred(address indexed oldEscapeHatch, address indexed newEscapeHatch);
+
+    /// On construction, set auth fields.
+    constructor(address escapeHatchAddress) public {
+        owner = msg.sender;
+        escapeHatch = escapeHatchAddress;
+    }
 
     /// Only run modified function if sent by `owner`.
     modifier onlyOwner() {
@@ -35,28 +41,23 @@ contract ReserveDollarEternalStorage {
 
     /// Set `owner`.
     function transferOwnership(address newOwner) external {
-        require(msg.sender == owner || msg.sender == escapeHatch);
+        require(msg.sender == owner || msg.sender == escapeHatch, "not authorized");
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
 
     /// Set `escape hatch`.
     function transferEscapeHatch(address newEscapeHatch) external {
-        require(msg.sender == escapeHatch);
+        require(msg.sender == escapeHatch, "not authorized");
         emit EscapeHatchTransferred(escapeHatch, newEscapeHatch);
         escapeHatch = newEscapeHatch;
-    }
-    /// On construction, set auth fields.
-    constructor(address escapeHatchAddress) public {
-        owner = msg.sender;
-        escapeHatch = escapeHatchAddress;
     }
 
 
 
     // ===== balance =====
 
-    mapping (address => uint256) public balance;
+    mapping(address => uint256) public balance;
 
     /// Add `value` to `balance[key]`, unless this causes integer overflow.
     ///
@@ -81,7 +82,7 @@ contract ReserveDollarEternalStorage {
 
     // ===== allowed =====
 
-    mapping (address => mapping (address => uint256)) public allowed;
+    mapping(address => mapping(address => uint256)) public allowed;
 
     /// Set `to`'s allowance of `from`'s tokens to `value`.
     function setAllowed(address from, address to, uint256 value) external onlyOwner {
@@ -95,7 +96,7 @@ contract ReserveDollarEternalStorage {
     /// @dev When `frozenTime[addr] == 0`, `addr` is not frozen. This is the normal state.
     /// When `frozenTime[addr] == t` and `t > 0`, `addr` was last frozen at timestamp `t`.
     /// So, to unfreeze an address `addr`, set `frozenTime[addr] = 0`.
-    mapping (address => uint256) public frozenTime;
+    mapping(address => uint256) public frozenTime;
 
     /// Set `frozenTime[who]` to `time`.
     function setFrozenTime(address who, uint256 time) external onlyOwner {
