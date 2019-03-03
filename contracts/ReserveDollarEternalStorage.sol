@@ -27,6 +27,12 @@ contract ReserveDollarEternalStorage {
     event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
     event EscapeHatchTransferred(address indexed oldEscapeHatch, address indexed newEscapeHatch);
 
+    /// On construction, set auth fields.
+    constructor(address escapeHatchAddress) public {
+        owner = msg.sender;
+        escapeHatch = escapeHatchAddress;
+    }
+
     /// Only run modified function if sent by `owner`.
     modifier onlyOwner() {
         require(msg.sender == owner, "onlyOwner");
@@ -45,11 +51,6 @@ contract ReserveDollarEternalStorage {
         require(msg.sender == escapeHatch, "not authorized");
         emit EscapeHatchTransferred(escapeHatch, newEscapeHatch);
         escapeHatch = newEscapeHatch;
-    }
-    /// On construction, set auth fields.
-    constructor(address escapeHatchAddress) public {
-        owner = msg.sender;
-        escapeHatch = escapeHatchAddress;
     }
 
 
