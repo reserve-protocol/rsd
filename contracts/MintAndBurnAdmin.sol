@@ -21,8 +21,8 @@ contract MintAndBurnAdmin {
         bool isMint;
     }
     uint256 public nextProposal;
-    mapping (uint256 => Proposal) public proposals;
-    mapping (uint256 => bool) public completed;
+    mapping(uint256 => Proposal) public proposals;
+    mapping(uint256 => bool) public completed;
 
     event ProposalCreated(uint256 index, address addr, uint256 value, bool isMint, uint256 delayUntil);
     event ProposalConfirmed(uint256 index, address addr, uint256 value, bool isMint);

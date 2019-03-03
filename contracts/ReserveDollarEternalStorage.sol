@@ -56,7 +56,7 @@ contract ReserveDollarEternalStorage {
 
     // ===== balance =====
 
-    mapping (address => uint256) public balance;
+    mapping(address => uint256) public balance;
 
     /// Add `value` to `balance[key]`, unless this causes integer overflow.
     ///
@@ -81,7 +81,7 @@ contract ReserveDollarEternalStorage {
 
     // ===== allowed =====
 
-    mapping (address => mapping (address => uint256)) public allowed;
+    mapping(address => mapping(address => uint256)) public allowed;
 
     /// Set `to`'s allowance of `from`'s tokens to `value`.
     function setAllowed(address from, address to, uint256 value) external onlyOwner {
@@ -95,7 +95,7 @@ contract ReserveDollarEternalStorage {
     /// @dev When `frozenTime[addr] == 0`, `addr` is not frozen. This is the normal state.
     /// When `frozenTime[addr] == t` and `t > 0`, `addr` was last frozen at timestamp `t`.
     /// So, to unfreeze an address `addr`, set `frozenTime[addr] = 0`.
-    mapping (address => uint256) public frozenTime;
+    mapping(address => uint256) public frozenTime;
 
     /// Set `frozenTime[who]` to `time`.
     function setFrozenTime(address who, uint256 time) external onlyOwner {
