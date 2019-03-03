@@ -97,13 +97,13 @@ contract ReserveDollar is IERC20 {
 
     /// Modifies a function to only run if sent by `role`.
     modifier only(address role) {
-        require(msg.sender == role, "unauthorized");
+        require(msg.sender == role, "unauthorized: not role holder");
         _;
     }
 
     /// Modifies a function to only run if sent by `role` or the contract's `owner`.
     modifier onlyOwnerOr(address role) {
-        require(msg.sender == owner || msg.sender == role, "unauthorized and not owner");
+        require(msg.sender == owner || msg.sender == role, "unauthorized: not role holder and not owner");
         _;
     }
 
