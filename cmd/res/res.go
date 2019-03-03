@@ -32,8 +32,7 @@ var defaultKeys = []string{
 	"23cb7121166b9a2f93ae0b7c05bde02eae50d64449b2cbb42bc84e9d38d6cc89",
 }
 
-const resIntro = `
-A CLI for interacting with the Reserve Dollar smart contract.
+const resIntro = `A CLI for interacting with the Reserve Dollar smart contract.
 
 This is designed for testing purposes. The goal is to make it easier to run small experiments
 on the Reserve Dollar from the command line, without needing to write any code.
