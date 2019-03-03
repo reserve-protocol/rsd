@@ -74,12 +74,12 @@ pre-funded accounts in the 0xorg/devnet image.
 For paid mutator calls, 'res' will default to using account '@0'. To override this default
 per-command, you can use the '-F' (aka '--from') flag, like so:
 
-	res --from @1 transfer @2 200.5
+    res --from @1 transfer @2 200.5
 
 You can also switch the default for the remainder of the current terminal session with
 'res account':
 
-	$(res account @3)
+    $(res account @3)
 `
 
 const usageTemplate = `Usage:{{if .Runnable}}
@@ -106,7 +106,8 @@ Global Flags:
 Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
   {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
-  Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}`
+  Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
 
 func main() {
 	root := cobra.Command{
