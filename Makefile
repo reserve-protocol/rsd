@@ -16,7 +16,7 @@ fmt:
 	npx solium -d contracts/ --fix
 
 res: cmd/res/res.go
-	go build ./cmd/res
+	go install ./cmd/res
 
 run-dev-container:
 	docker run \
