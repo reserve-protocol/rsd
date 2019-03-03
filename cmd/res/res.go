@@ -113,9 +113,6 @@ func main() {
 		Use:   "res",
 		Short: "A command-line interface to interact with the Reserve Dollar smart contract",
 		Long:  resIntro,
-		//Run: func(cmd *cobra.Command, args []string) {
-		//fmt.Println(cmd.UsageTemplate())
-		//},
 	}
 	type cmdBlock struct {
 		Name     string
