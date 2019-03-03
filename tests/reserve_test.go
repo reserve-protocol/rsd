@@ -134,7 +134,7 @@ func (s *ReserveDollarSuite) TestChangeName() {
 func (s *ReserveDollarSuite) TestChangeNameFailsForNonOwner() {
 	const newName, newSymbol = "Flamingo", "MGO"
 	s.requireTxFails(
-		s.reserve.ChangeName(signer(common.BigToAddress(bigInt(3))), newName, newSymbol),
+		s.reserve.ChangeName(signer(s.account[3]), newName, newSymbol),
 	)
 }
 
