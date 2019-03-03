@@ -24,8 +24,8 @@ contract ReserveDollarEternalStorage {
     address public owner; // TODO: https://github.com/reserve-protocol/reserve-dollar/issues/8
     address public escapeHatch;
 
-    event OwnershipTransferred(address oldOwner, address newOwner);
-    event EscapeHatchTransferred(address oldEscapeHatch, address newEscapeHatch);
+    event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
+    event EscapeHatchTransferred(address indexed oldEscapeHatch, address indexed newEscapeHatch);
 
     /// Only run modified function if sent by `owner`.
     modifier onlyOwner() {

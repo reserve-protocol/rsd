@@ -135,8 +135,8 @@ contract ReserveDollar is IERC20 {
         emit NameChanged(newName, newSymbol);
     }
 
-    event Paused(address account);
-    event Unpaused(address account);
+    event Paused(address indexed account);
+    event Unpaused(address indexed account);
 
     /// Pause the contract.
     function pause() external only(pauser) {
