@@ -230,8 +230,6 @@ func main() {
 	}
 }
 
-// TODO: show events
-
 var client *ethclient.Client
 
 func getNode() *ethclient.Client {
