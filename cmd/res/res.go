@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/reserve-protocol/reserve-dollar/abi"
@@ -232,9 +234,14 @@ func main() {
 
 // TODO: show events
 
+var client *ethclient.Client
+
 func getNode() *ethclient.Client {
-	client, err := ethclient.Dial("http://localhost:8545")
-	check(err, "Failed to connect to Ethereum node (is there a node running at localhost:8545?)")
+	if client == nil {
+		var err error
+		client, err = ethclient.Dial("http://localhost:8545")
+		check(err, "Failed to connect to Ethereum node (is there a node running at localhost:8545?)")
+	}
 	return client
 }
 
@@ -242,17 +249,22 @@ func getSigner() *bind.TransactOpts {
 	return bind.NewKeyedTransactor(parseKey(viper.GetString("from")))
 }
 
+var rsvd *abi.ReserveDollar
+
 func getReserveDollar() *abi.ReserveDollar {
-	address := viper.GetString("address")
-	if address == "" {
-		fmt.Fprintln(os.Stderr, "No address specified for the Reserve Dollar contract.")
-		fmt.Fprintln(os.Stderr, "To specify an address, set the --address flag or the RSVD_ADDRESS environment variable.")
-		fmt.Fprintln(os.Stderr, "To deploy a new contract and set the RSVD_ADDRESS in your current shell in a single step, run:")
-		fmt.Fprintln(os.Stderr, "\t$(res deploy)")
-		os.Exit(1)
+	if rsvd == nil {
+		address := viper.GetString("address")
+		if address == "" {
+			fmt.Fprintln(os.Stderr, "No address specified for the Reserve Dollar contract.")
+			fmt.Fprintln(os.Stderr, "To specify an address, set the --address flag or the RSVD_ADDRESS environment variable.")
+			fmt.Fprintln(os.Stderr, "To deploy a new contract and set the RSVD_ADDRESS in your current shell in a single step, run:")
+			fmt.Fprintln(os.Stderr, "\t$(res deploy)")
+			os.Exit(1)
+		}
+		var err error
+		rsvd, err = abi.NewReserveDollar(common.HexToAddress(address), getNode())
+		check(err, "Couldn't bind Reserve Dollar contract")
 	}
-	rsvd, err := abi.NewReserveDollar(common.HexToAddress(address), getNode())
-	check(err, "Couldn't bind Reserve Dollar contract")
 	return rsvd
 }
 
@@ -335,6 +347,26 @@ func toAddress(key *ecdsa.PrivateKey) common.Address {
 
 func keyToHex(key *ecdsa.PrivateKey) string {
 	return hex.EncodeToString(crypto.FromECDSA(key))
+}
+
+func log(name string, tx *types.Transaction, err error) {
+	check(err, name+" failed")
+	receipt, err := bind.WaitMined(context.Background(), getNode(), tx)
+	check(err, "waiting for "+name+" to be mined")
+	if len(receipt.Logs) > 0 {
+		rsvd := getReserveDollar()
+		fmt.Println("Done. Events:")
+		for _, log := range receipt.Logs {
+			parsed, err := rsvd.ParseLog(log)
+			if err == nil {
+				fmt.Println("\t" + parsed.String())
+			} else {
+				fmt.Println("\t" + err.Error())
+			}
+		}
+	} else {
+		fmt.Println("< Done. No events generated >")
+	}
 }
 
 var deployCmd = &cobra.Command{
@@ -445,9 +477,8 @@ var transferCmd = &cobra.Command{
 	Short: "Transfer Reserve Dollars.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().Transfer(getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]))
-		check(err, "transfer() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().Transfer(getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]))
+		log("transfer()", tx, err)
 	},
 }
 
@@ -456,9 +487,8 @@ var approveCmd = &cobra.Command{
 	Short: "Approve a spender to spend Reserve Dollars.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().Approve(getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]))
-		check(err, "approve() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().Approve(getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]))
+		log("approve()", tx, err)
 	},
 }
 
@@ -467,11 +497,10 @@ var transferFromCmd = &cobra.Command{
 	Short: "Transfer tokens from `from` to `to`. Must be sent by an account approved to spend from `from`.",
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().TransferFrom(
+		tx, err := getReserveDollar().TransferFrom(
 			getSigner(), parseAddress(args[0]), parseAddress(args[1]), parseAttoTokens(args[2]),
 		)
-		check(err, "transferFrom() failed")
-		fmt.Println("Done.")
+		log("transferFrom()", tx, err)
 	},
 }
 
@@ -480,11 +509,10 @@ var increaseAllowanceCmd = &cobra.Command{
 	Short: "Increase the allowance of a spender.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().IncreaseAllowance(
+		tx, err := getReserveDollar().IncreaseAllowance(
 			getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]),
 		)
-		check(err, "increaseAllowance() failed")
-		fmt.Println("Done.")
+		log("increaseAllowance()", tx, err)
 	},
 }
 
@@ -493,11 +521,10 @@ var decreaseAllowanceCmd = &cobra.Command{
 	Short: "Decrease the allowance of a spender.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().DecreaseAllowance(
+		tx, err := getReserveDollar().DecreaseAllowance(
 			getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]),
 		)
-		check(err, "decreaseAllowance() failed")
-		fmt.Println("Done.")
+		log("decreaseAllowance()", tx, err)
 	},
 }
 
@@ -558,9 +585,8 @@ var changeMinterCmd = &cobra.Command{
 	res changeMinter $(res address @1)`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().ChangeMinter(getSigner(), parseAddress(args[0]))
-		check(err, "changeMinter() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().ChangeMinter(getSigner(), parseAddress(args[0]))
+		log("changeMinter()", tx, err)
 	},
 }
 
@@ -571,9 +597,8 @@ var changePauserCmd = &cobra.Command{
 	res changePauser$(res address @1)`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().ChangePauser(getSigner(), parseAddress(args[0]))
-		check(err, "changePauser() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().ChangePauser(getSigner(), parseAddress(args[0]))
+		log("changePauser()", tx, err)
 	},
 }
 
@@ -584,9 +609,8 @@ var changeFreezerCmd = &cobra.Command{
 	res changeFreezer$(res address @1)`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().ChangeFreezer(getSigner(), parseAddress(args[0]))
-		check(err, "changeFreezer() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().ChangeFreezer(getSigner(), parseAddress(args[0]))
+		log("changeFreezer()", tx, err)
 	},
 }
 
@@ -595,9 +619,8 @@ var nominateNewOwnerCmd = &cobra.Command{
 	Short: "Nominate a new owner for the Reserve Dollar contract. The new owner must call `acceptOwnership`.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().NominateNewOwner(getSigner(), parseAddress(args[0]))
-		check(err, "nominateNewOwner() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().NominateNewOwner(getSigner(), parseAddress(args[0]))
+		log("nominateNewOwner()", tx, err)
 	},
 }
 
@@ -605,9 +628,8 @@ var acceptOwnershipCmd = &cobra.Command{
 	Use:   "acceptOwnership",
 	Short: "Accept ownership nomination. Must be called by current nominatedOwner.",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().AcceptOwnership(getSigner())
-		check(err, "acceptOwnership() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().AcceptOwnership(getSigner())
+		log("acceptOwnership()", tx, err)
 	},
 }
 
@@ -615,9 +637,8 @@ var renounceOwnershipCmd = &cobra.Command{
 	Use:   "renounceOwnership",
 	Short: "Renounce ownership. Must be called by current owner.",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().RenounceOwnership(getSigner())
-		check(err, "renounceOwnership() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().RenounceOwnership(getSigner())
+		log("renounceOwnership()", tx, err)
 	},
 }
 
@@ -626,9 +647,8 @@ var transferEternalStorageCmd = &cobra.Command{
 	Short: "Transfer ownership of eternal storage contract. Must be called by current owner.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().TransferEternalStorage(getSigner(), parseAddress(args[0]))
-		check(err, "transferEternalStorage() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().TransferEternalStorage(getSigner(), parseAddress(args[0]))
+		log("transferEternalStorage()", tx, err)
 	},
 }
 
@@ -637,9 +657,8 @@ var changeNameCmd = &cobra.Command{
 	Short: "Change the name and/or symbol of the Reserve Dollar. Must be called by current owner.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().ChangeName(getSigner(), args[0], args[1])
-		check(err, "changeName() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().ChangeName(getSigner(), args[0], args[1])
+		log("changeName()", tx, err)
 	},
 }
 
@@ -647,9 +666,8 @@ var pauseCmd = &cobra.Command{
 	Use:   "pause",
 	Short: "Pause the Reserve Dollar contract.",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().Pause(getSigner())
-		check(err, "pause() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().Pause(getSigner())
+		log("pause()", tx, err)
 	},
 }
 
@@ -657,9 +675,8 @@ var unpauseCmd = &cobra.Command{
 	Use:   "unpause",
 	Short: "Unpause the Reserve Dollar contract.",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().Unpause(getSigner())
-		check(err, "unpause() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().Unpause(getSigner())
+		log("unpause()", tx, err)
 	},
 }
 
@@ -667,9 +684,8 @@ var freezeCmd = &cobra.Command{
 	Use:   "freeze <address who>",
 	Short: "Freeze an account.",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().Freeze(getSigner(), parseAddress(args[1]))
-		check(err, "freeze() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().Freeze(getSigner(), parseAddress(args[1]))
+		log("freeze()", tx, err)
 	},
 }
 
@@ -677,9 +693,8 @@ var unfreezeCmd = &cobra.Command{
 	Use:   "unfreeze <address who>",
 	Short: "Unfreeze an account.",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().Unfreeze(getSigner(), parseAddress(args[1]))
-		check(err, "unfreeze() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().Unfreeze(getSigner(), parseAddress(args[1]))
+		log("unfreeze()", tx, err)
 	},
 }
 
@@ -687,9 +702,8 @@ var wipeCmd = &cobra.Command{
 	Use:   "wipe <address who>",
 	Short: "Wipe an account.",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().Wipe(getSigner(), parseAddress(args[1]))
-		check(err, "wipe() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().Wipe(getSigner(), parseAddress(args[1]))
+		log("wipe()", tx, err)
 	},
 }
 
@@ -698,9 +712,8 @@ var mintCmd = &cobra.Command{
 	Short: "Mint tokens to an address. Must be called by the current minter.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().Mint(getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]))
-		check(err, "mint() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().Mint(getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]))
+		log("mint()", tx, err)
 	},
 }
 
@@ -709,9 +722,8 @@ var burnFromCmd = &cobra.Command{
 	Short: "Burn tokens from an address that has approved the minter.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := getReserveDollar().BurnFrom(getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]))
-		check(err, "burnFrom() failed")
-		fmt.Println("Done.")
+		tx, err := getReserveDollar().BurnFrom(getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]))
+		log("burnFrom()", tx, err)
 	},
 }
 
