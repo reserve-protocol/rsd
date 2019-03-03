@@ -28,11 +28,132 @@ var defaultKeys = []string{
 	"efb595a0178eb79a8df953f87c5148402a224cdf725e88c0146727c6aceadccd",
 }
 
+const usageTemplate = `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+
+{{range getAllCmds}}
+{{.Name}}:{{range .Commands}}
+  {{rpad .Name .NamePadding}} {{.Short}}{{end}}
+{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+  Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}`
+
 func main() {
 	root := cobra.Command{
 		Use:   "res",
 		Short: "A command-line interface to interact with the Reserve Dollar smart contract",
+		//Run: func(cmd *cobra.Command, args []string) {
+		//fmt.Println(cmd.UsageTemplate())
+		//},
 	}
+	type cmdBlock struct {
+		Name     string
+		Commands []*cobra.Command
+	}
+	allCmds := []cmdBlock{
+		{
+			"CLI Utility Commands",
+			[]*cobra.Command{
+				deployCmd,
+				addressCmd,
+				accountCmd,
+			},
+		},
+		{
+			"Basic Information Commands",
+			[]*cobra.Command{
+				nameCmd,
+				symbolCmd,
+				decimalsCmd,
+			},
+		},
+		{
+			"ERC-20 Commands",
+			[]*cobra.Command{
+				balanceOfCmd,
+				allowanceCmd,
+				totalSupplyCmd,
+				transferCmd,
+				approveCmd,
+				transferFromCmd,
+			},
+		},
+		{
+			"ERC Approval Bug Mitigation Commands",
+			[]*cobra.Command{
+				increaseAllowanceCmd,
+				decreaseAllowanceCmd,
+			},
+		},
+		{
+			"Read Admin Role Commands",
+			[]*cobra.Command{
+				ownerCmd,
+				minterCmd,
+				pauserCmd,
+				freezerCmd,
+				nominatedOwnerCmd,
+			},
+		},
+		{
+			"Change Admin Role Commands",
+			[]*cobra.Command{
+				changeMinterCmd,
+				changePauserCmd,
+				changeFreezerCmd,
+				nominateNewOwnerCmd,
+				acceptOwnershipCmd,
+				renounceOwnershipCmd,
+			},
+		},
+		{
+			"Pausing and Freezing Commands",
+			[]*cobra.Command{
+				pauseCmd,
+				unpauseCmd,
+				freezeCmd,
+				unfreezeCmd,
+				wipeCmd,
+			},
+		},
+		{
+			"Minting and Burning Commands",
+			[]*cobra.Command{
+				mintCmd,
+				burnFromCmd,
+			},
+		},
+		{
+			"Upgrade Commands",
+			[]*cobra.Command{
+				transferEternalStorageCmd,
+				changeNameCmd,
+			},
+		},
+	}
+	for _, block := range allCmds {
+		root.AddCommand(block.Commands...)
+	}
+	cobra.AddTemplateFunc("getAllCmds", func() []cmdBlock {
+		return allCmds
+	})
+	root.SetUsageTemplate(usageTemplate)
 	viper.SetEnvPrefix("rsvd")
 	viper.AutomaticEnv()
 	root.PersistentFlags().StringP(
@@ -48,51 +169,6 @@ func main() {
 		"Address of a deployed copy of the Reserve Dollar contract.",
 	)
 	viper.BindPFlags(root.PersistentFlags())
-
-	root.AddCommand(
-		deployCmd,
-		addressCmd,
-		accountCmd,
-
-		balanceOfCmd,
-		allowanceCmd,
-		totalSupplyCmd,
-		nameCmd,
-		symbolCmd,
-		decimalsCmd,
-
-		transferCmd,
-		approveCmd,
-		transferFromCmd,
-
-		increaseAllowanceCmd,
-		decreaseAllowanceCmd,
-
-		ownerCmd,
-		minterCmd,
-		pauserCmd,
-		freezerCmd,
-		nominatedOwnerCmd,
-
-		changeMinterCmd,
-		changePauserCmd,
-		changeFreezerCmd,
-
-		nominateNewOwnerCmd,
-		acceptOwnershipCmd,
-		renounceOwnershipCmd,
-
-		transferEternalStorageCmd,
-		changeNameCmd,
-
-		pauseCmd,
-		unpauseCmd,
-		freezeCmd,
-		unfreezeCmd,
-		wipeCmd,
-
-		mintCmd,
-	)
 
 	err := root.Execute()
 	if err != nil {
