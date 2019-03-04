@@ -108,19 +108,19 @@ contract ReserveDollar is IERC20 {
         _;
     }
 
-    /// Change who holds the `minter` role
+    /// Change who holds the `minter` role.
     function changeMinter(address newMinter) external onlyOwnerOr(minter) {
         minter = newMinter;
         emit MinterChanged(newMinter);
     }
 
-    /// Change who holds the `pauser` role
+    /// Change who holds the `pauser` role.
     function changePauser(address newPauser) external onlyOwnerOr(pauser) {
         pauser = newPauser;
         emit PauserChanged(newPauser);
     }
 
-    /// Change who holds the `freezer` role
+    /// Change who holds the `freezer` role.
     function changeFreezer(address newFreezer) external onlyOwnerOr(freezer) {
         freezer = newFreezer;
         emit FreezerChanged(newFreezer);
