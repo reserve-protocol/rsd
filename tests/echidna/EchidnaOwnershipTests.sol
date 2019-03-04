@@ -1,6 +1,7 @@
 pragma solidity ^0.5.4;
 
 import "ReserveDollar.sol";
+import "TestFixtureReserveDollar.sol";
 
 // Check that there is no combination of messages an owner can send to change the owner other than
 // `renounceOwnership`
@@ -19,24 +20,10 @@ contract EchidnaConstantOwnerSimple is ReserveDollar {
 // Try to find overflows by allowing all possible transfer amounts. Attacking
 // users can transfer any amounts they want. This lets us get random non zero
 // values into any contract balances.
-contract EchidnaConstantOwnerFreeMoney is ReserveDollar {
+contract EchidnaConstantOwnerFreeMoney is TestFixtureReserveDollar {
     constructor() public {
         minter = address(this);
     }
-    
-    function testFixtureIncreaseAllowance(address from, address spender, uint256 addedValue) public returns (bool) {
-        _approve(from, spender, addedValue);
-        return true;
-    }
-
-    function testFixtureMint(address account, uint256 value) internal notPaused notFrozen(account) only(minter) {
-        require(account != address(0), "can't mint to address zero");
-
-        totalSupply = totalSupply.add(value);
-        data.addBalance(account, value);
-        emit Transfer(address(0), account, value);
-    }
-
 
     function transfer(address to, uint256 value) public returns (bool) {
         testFixtureMint(msg.sender, value);

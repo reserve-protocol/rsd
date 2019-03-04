@@ -1,10 +1,11 @@
 pragma solidity ^0.5.4;
 
 import "ReserveDollar.sol";
+import "TestFixtureReserveDollar.sol";
 
 // Test that 3 users that can transfer between themselves only cannot increase
 // or decrease the total supply
-contract EchidnaTotalSupplyTests is ReserveDollar {
+contract EchidnaTotalSupplyTests is TestFixtureReserveDollar {
     ReserveDollar r;
 
     constructor() public {
@@ -14,14 +15,6 @@ contract EchidnaTotalSupplyTests is ReserveDollar {
         testFixtureMint(address(0x2), 1234);
         testFixtureMint(address(0x3), 12345);
     }
-    function testFixtureMint(address account, uint256 value) internal notPaused notFrozen(account) only(minter) {
-        require(account != address(0), "can't mint to address zero");
-
-        totalSupply = totalSupply.add(value);
-        data.addBalance(account, value);
-        emit Transfer(address(0), account, value);
-    }
-
     // Disable the `burnFrom` function to prevent the total supply from
     // changing during the transfer testing
     function burnFrom(address, uint256) external { return; }
