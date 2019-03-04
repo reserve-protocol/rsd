@@ -16,7 +16,7 @@ The CLI is written assuming that it is being run against a local Ethereum node, 
 on http://localhost:8545, with the same-prefunded accounts as the 0xorg/devnet docker image.
 To run the 0xorg/devnet docker image, use the command:
 
-    docker run -it --rm -p 8545:8501 0xorg/devnet
+    make run-devnet
 
 To deploy a new copy of the Reserve Dollar locally, run:
 
