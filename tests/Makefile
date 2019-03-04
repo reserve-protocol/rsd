@@ -1,10 +1,17 @@
 
+fuzz: fuzz-total-supply fuzz-ownership
+
+fuzz-total-supply: setup
+	echidna-test EchidnaTransferTests.sol EchidnaTotalSupplyTests --config multisender.yaml
+	
+fuzz-ownership: setup
+	echidna-test EchidnaOwnershipTests.sol EchidnaConstantOwnerSimple --config multisender.yaml
+
+
 
 setup: ReserveDollar.sol \
        ReserveDollarEternalStorage.sol \
        zeppelin/SafeMath.sol
-
-
 
 ReserveDollar.sol: ../contracts/ReserveDollar.sol
 	ln $< $@
@@ -21,3 +28,5 @@ clean:
 	rm ReserveDollar.sol \
        ReserveDollarEternalStorage.sol \
        zeppelin/SafeMath.sol
+
+.PHONY: fuzz fuzz-total-supply fuzz-ownership
