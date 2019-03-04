@@ -23,7 +23,7 @@ contract MintAndBurnAdmin {
 
     uint256 public nextProposal;
     mapping(uint256 => Proposal) public proposals;
-    mapping(uint256 => bool) public completed;
+    mapping(uint256 => bool) public closed;
 
     // EVENTS
 
@@ -64,11 +64,10 @@ contract MintAndBurnAdmin {
     function cancel(uint256 index, address addr, uint256 value, bool isMint) external {
         // Check authorization.
         require(msg.sender == admin, "must be admin");
-        requireMatchingProposal(index, addr, value, isMint);
-        require(!completed[index], "already completed");
+        requireMatchingOpenProposal(index, addr, value, isMint);
 
         // Cancel proposal.
-        completed[index] = true;
+        closed[index] = true;
         emit ProposalCancelled(index, addr, value, isMint);
     }
 
@@ -76,14 +75,13 @@ contract MintAndBurnAdmin {
     function confirm(uint256 index, address addr, uint256 value, bool isMint) external {
         // Check authorization.
         require(msg.sender == admin, "must be admin");
-        requireMatchingProposal(index, addr, value, isMint);
+        requireMatchingOpenProposal(index, addr, value, isMint);
 
         // See commentary above about using `now`.
         require(proposals[index].time < now, "too early"); // solium-disable-line security/no-block-members
-        require(!completed[index], "already completed");
 
         // Record execution of proposal.
-        completed[index] = true;
+        closed[index] = true;
         emit ProposalConfirmed(index, addr, value, isMint);
 
         // Proceed with execution of proposal.
@@ -95,8 +93,9 @@ contract MintAndBurnAdmin {
     }
 
     /// Throw unless the given proposal exists and matches `addr`, `value`, and `isMint`.
-    function requireMatchingProposal(uint256 index, address addr, uint256 value, bool isMint) private view {
+    function requireMatchingOpenProposal(uint256 index, address addr, uint256 value, bool isMint) private view {
         require(index < nextProposal, "no such proposal");
+        require(!closed[index], "proposal already closed");
 
         // Slither reports "dangerous strict equality" for each of these, but it's OK.
         // These equalities are to confirm that the proposal entered is equal to the
