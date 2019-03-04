@@ -48,7 +48,7 @@ type Backend struct {
 // NewBackend dials an ethereum node at nodeAddress and returns a *Backend client for that node.
 //
 // NewBackend also starts a Node.js process, which the caller is responsible for closing by calling
-// Backend.Close:
+// Backend.Close(). Example:
 //
 //	backend, err := NewBackend("http://localhost:8545", "project/artifacts", "project/contracts")
 //	// handle err
