@@ -24,7 +24,8 @@ interface IERC20 {
  * @dev An ERC-20 token with minting, burning, pausing, and user freezing.
  * Based on OpenZeppelin's [implementation](https://github.com/OpenZeppelin/openzeppelin-solidity/blob/41aa39afbc13f0585634061701c883fe512a5469/contracts/token/ERC20/ERC20.sol).
  *
- * Non-constant-sized data is held in ReserveDollarEternalStorage, to facilitate potential future upgrades.
+ * Non-constant-sized data is held in ReserveDollarEternalStorage,
+ * to facilitate potential future upgrades.
  */
 contract ReserveDollar is IERC20 {
     using SafeMath for uint256;
