@@ -41,7 +41,7 @@ contract ReserveDollar is IERC20 {
     string public name = "Reserve Dollar";
     string public symbol = "RSVD";
     uint8 public constant decimals = 18;
-    uint256 private _totalSupply;
+    uint256 public totalSupply;
 
     // Paused data
     bool public paused;
@@ -221,11 +221,6 @@ contract ReserveDollar is IERC20 {
     // ==== Token transfers, allowances, minting, and burning ====
 
 
-    /// @return how many attotokens exist.
-    function totalSupply() external view returns (uint256) {
-        return _totalSupply;
-    }
-
     /// @return how many attotokens are held by `holder`.
     function balanceOf(address holder) external view returns (uint256) {
         return data.balance(holder);
@@ -325,7 +320,7 @@ contract ReserveDollar is IERC20 {
     function mint(address account, uint256 value) external notPaused only(minter) {
         require(account != address(0), "can't mint to address zero");
 
-        _totalSupply = _totalSupply.add(value);
+        totalSupply = totalSupply.add(value);
         data.addBalance(account, value);
         emit Transfer(address(0), account, value);
     }
@@ -351,7 +346,7 @@ contract ReserveDollar is IERC20 {
     function _burn(address account, uint256 value) internal {
         require(account != address(0), "can't burn from address zero");
 
-        _totalSupply = _totalSupply.sub(value);
+        totalSupply = totalSupply.sub(value);
         data.subBalance(account, value);
         emit Transfer(account, address(0), value);
     }
