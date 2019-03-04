@@ -56,7 +56,7 @@ contract ReserveDollar is IERC20 {
     // EVENTS
 
 
-    // Auth roles changed
+    // Auth role change events
     event OwnerChanged(address indexed newOwner);
     event MinterChanged(address indexed newMinter);
     event PauserChanged(address indexed newPauser);
@@ -119,7 +119,7 @@ contract ReserveDollar is IERC20 {
         emit PauserChanged(newPauser);
     }
 
-    /// Change the holds the `freezer` role
+    /// Change who holds the `freezer` role
     function changeFreezer(address newFreezer) external onlyOwnerOr(freezer) {
         freezer = newFreezer;
         emit FreezerChanged(newFreezer);
@@ -181,21 +181,23 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Freeze token transactions for a particular address.
-    function freeze(address who) external only(freezer) {
-        require(data.frozenTime(who) == 0, "account already frozen");
+    function freeze(address account) external only(freezer) {
+        require(data.frozenTime(account) == 0, "account already frozen");
+
         // In `wipe` we use block.timestamp to check that enough time has passed since this
         // freeze happened. That required time delay -- 4 weeks -- is a long time relative
         // to the maximum drift of block.timestamp, so it is fine to trust the miner here.
         // solium-disable-next-line security/no-block-members
-        data.setFrozenTime(who, now);
-        emit Frozen(freezer, who);
+        data.setFrozenTime(account, now);
+
+        emit Frozen(freezer, account);
     }
 
     /// Unfreeze token transactions for a particular address.
-    function unfreeze(address who) external only(freezer) {
-        require(data.frozenTime(who) > 0, "account not frozen");
-        data.setFrozenTime(who, 0);
-        emit Unfrozen(freezer, who);
+    function unfreeze(address account) external only(freezer) {
+        require(data.frozenTime(account) > 0, "account not frozen");
+        data.setFrozenTime(account, 0);
+        emit Unfrozen(freezer, account);
     }
 
     /// Modifies a function to run only when the `account` is not frozen.
@@ -205,14 +207,13 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Burn the balance of an account that has been frozen for at least 4 weeks.
-    function wipe(address who) external only(freezer) {
-        require(data.frozenTime(who) > 0, "cannot wipe unfrozen account");
-        // Use block.timestamp to check that enough time has passed. 4 weeks is a long time relative to
-        // the maximum drift of block.timestamp, so it is fine to trust the miner here.
+    function wipe(address account) external only(freezer) {
+        require(data.frozenTime(account) > 0, "cannot wipe unfrozen account");
+        // See commentary above about using block.timestamp.
         // solium-disable-next-line security/no-block-members
-        require(data.frozenTime(who) + 4 weeks < now, "cannot wipe frozen account before 4 weeks");
-        _burn(who, data.balance(who));
-        emit Wiped(freezer, who);
+        require(data.frozenTime(account) + 4 weeks < now, "cannot wipe frozen account before 4 weeks");
+        _burn(account, data.balance(account));
+        emit Wiped(freezer, account);
     }
 
 

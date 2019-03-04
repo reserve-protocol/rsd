@@ -78,7 +78,8 @@ contract MintAndBurnAdmin {
         requireMatchingOpenProposal(index, addr, value, isMint);
 
         // See commentary above about using `now`.
-        require(proposals[index].time < now, "too early"); // solium-disable-line security/no-block-members
+        // solium-disable-next-line security/no-block-members
+        require(proposals[index].time < now, "too early");
 
         // Record execution of proposal.
         closed[index] = true;
