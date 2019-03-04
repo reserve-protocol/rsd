@@ -90,7 +90,7 @@ The root Makefile provides entry points for building and testing:
 - `make run-dev-container`: Open dockerized development environment.
 
 ## More on `make run-devnet`
-Some of our tools -- `poke` and `make coverage` -- expect to interact with a local [geth][go-etherum] node at `http://localhost:8545`. Notably `make test` does _not_ require this; it uses a faster, in-memory EVM implementation.
+Some of our tools -- `poke` and `make coverage` -- expect to interact with a local [geth][go-ethereum] node at `http://localhost:8545`. Notably `make test` does _not_ require this; it uses a faster, in-memory EVM implementation.
 
 The command `make run-devnet` sets up a local `geth` node specialized for testing. `make run-devnet` will run the [`0xorg/devnet` container][devnet] and have it listen on port 8545. This command produces lots of live output to stdout, which is frequently useful. We recommend either running it in its own terminal, or at least piping its output somewhere so that you can `tail -f` it.
 
