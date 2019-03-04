@@ -184,9 +184,9 @@ contract ReserveDollar is IERC20 {
     function freeze(address account) external only(freezer) {
         require(data.frozenTime(account) == 0, "account already frozen");
 
-        // In `wipe` we use block.timestamp to check that enough time has passed since this
-        // freeze happened. That required time delay -- 4 weeks -- is a long time relative
-        // to the maximum drift of block.timestamp, so it is fine to trust the miner here.
+        // In `wipe` we use block.timestamp (aka `now`) to check that enough time has passed since
+        // this freeze happened. That required time delay -- 4 weeks -- is a long time relative to
+        // the maximum drift of block.timestamp, so it is fine to trust the miner here.
         // solium-disable-next-line security/no-block-members
         data.setFrozenTime(account, now);
 
