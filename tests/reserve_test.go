@@ -32,19 +32,21 @@ var (
 	_ suite.TearDownAllSuite = &ReserveDollarSuite{}
 )
 
+var coverageEnabled = os.Getenv("COVERAGE_ENABLED") != ""
+
 // SetupSuite runs once, before all of the tests in the suite.
 func (s *ReserveDollarSuite) SetupSuite() {
 	s.setup()
-	if testing.CoverMode() == "" {
-		s.createFastNode()
-	} else {
+	if coverageEnabled {
 		s.createSlowCoverageNode()
+	} else {
+		s.createFastNode()
 	}
 }
 
 // TearDownSuite runs once, after all of the tests in the suite.
 func (s *ReserveDollarSuite) TearDownSuite() {
-	if testing.CoverMode() != "" {
+	if coverageEnabled {
 		// Write coverage profile to disk.
 		s.Assert().NoError(s.node.(*soltools.Backend).WriteCoverage())
 

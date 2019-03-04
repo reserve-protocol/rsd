@@ -52,7 +52,7 @@ func (s *MintAndBurnAdminSuite) BlockTime() *big.Int {
 func (s *MintAndBurnAdminSuite) SetupSuite() {
 	s.setup()
 
-	if testing.CoverMode() != "" {
+	if coverageEnabled {
 		// Print warning that we don't support coverage.
 		fmt.Fprintln(os.Stderr, "\nNOTE: Coverage information is not available for MintAndBurnAdmin, because its tests require faking the block timestamp")
 		fmt.Fprintln(os.Stderr)

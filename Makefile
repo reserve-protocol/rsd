@@ -12,7 +12,7 @@ fuzz:
 	make -C ./tests fuzz
 
 coverage: abi/bindings
-	go test -v -cover ./tests
+	COVERAGE_ENABLED=1 go test -v ./tests
 	open tests/coverage/index.html
 
 fmt:
