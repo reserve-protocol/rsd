@@ -1,0 +1,5 @@
+FROM trailofbits/echidna
+
+RUN wget https://github.com/ethereum/solidity/releases/download/v0.5.4/solc-static-linux \
+    && chmod +x solc-static-linux \
+    && mv solc-static-linux /usr/bin/solc

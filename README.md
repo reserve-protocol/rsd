@@ -28,7 +28,7 @@ To build and test everything in our configuration, your development environment 
 
 * **Go** -- 1.12 or later, to run many tools: ABI generation, tests, coverage, our contract CLI.
 * **Node** and **NPM** -- to run `sol-compiler` and `solium`
-* **Docker** -- to run 0x's a nicely-packaged `geth` node, for coverage and some end-to-end tests.
+* **Docker** -- to run echidna and 0x's a nicely-packaged `geth` node, for coverage and some end-to-end tests.
 
 ## Setting up a clean environment
 

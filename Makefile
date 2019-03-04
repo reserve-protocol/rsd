@@ -7,6 +7,8 @@ abi/bindings: contracts/*.sol abi/generate.go
 
 test: abi/bindings
 	go test ./tests
+
+fuzz:
 	make -C ./tests fuzz
 
 coverage: abi/bindings

@@ -10,12 +10,11 @@ contract ReserveDollarInner is ReserveDollar {
     function testFixtureChangeOwner(address newOwner) public {
         owner = newOwner;
     }
-
 }
 
 contract WrappedReserveDollar {
     ReserveDollarInner r;
-    
+
     constructor() public {
         r = new ReserveDollarInner(address(this));
     }
@@ -23,27 +22,27 @@ contract WrappedReserveDollar {
     function getEternalStorageAddress() public view returns(address) {
         return r.getEternalStorageAddress();
     }
-    
+
     function name() public view returns (string memory) {
         return r.name();
     }
-    
+
     function symbol() public view returns (string memory) {
         return r.symbol();
     }
-    
+
     function decimals() public view returns (uint8) {
         return r.decimals();
     }
-    
+
     function paused() public view returns (bool) {
         return r.paused();
     }
-    
+
     function owner() public view returns (address) {
         return r.owner();
     }
-    
+
     function minter() public view returns (address) {
         return r.minter();
     }
@@ -51,11 +50,11 @@ contract WrappedReserveDollar {
     function pauser() public view returns (address) {
         return r.pauser();
     }
-    
+
     function freezer() public view returns (address) {
         return r.freezer();
     }
-    
+
     function nominatedOwner() public view returns (address) {
         return r.nominatedOwner();
     }

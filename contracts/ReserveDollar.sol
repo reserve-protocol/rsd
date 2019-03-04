@@ -16,7 +16,7 @@ interface IERC20 {
     function balanceOf(address) external view returns (uint256);
     function allowance(address, address) external view returns (uint256);
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed holder, address indexed spender, uint256 value);
 }
 
 /**
@@ -224,14 +224,14 @@ contract ReserveDollar is IERC20 {
         return _totalSupply;
     }
 
-    /// @return how many tokens are held by `_owner`.
-    function balanceOf(address _owner) external view returns (uint256) {
-        return data.balance(_owner);
+    /// @return how many tokens are held by `holder`.
+    function balanceOf(address holder) external view returns (uint256) {
+        return data.balance(holder);
     }
 
-    /// @return how many tokens `_owner` has allowed `spender` to control.
-    function allowance(address _owner, address spender) external view returns (uint256) {
-        return data.allowed(_owner, spender);
+    /// @return how many tokens `holder` has allowed `spender` to control.
+    function allowance(address holder, address spender) external view returns (uint256) {
+        return data.allowed(holder, spender);
     }
 
     /// Transfer `value` attotokens from `msg.sender` to `to`.
@@ -356,13 +356,13 @@ contract ReserveDollar is IERC20 {
         emit Transfer(account, address(0), value);
     }
 
-    /// @dev Set `spender`'s allowance on `_owner`'s tokens to `value`.
+    /// @dev Set `spender`'s allowance on `holder`'s tokens to `value`.
     /// Internal; doesn't check permissions.
-    function _approve(address _owner, address spender, uint256 value) internal {
+    function _approve(address holder, address spender, uint256 value) internal {
         require(spender != address(0), "spender cannot be address zero");
-        require(_owner != address(0), "_owner cannot be address zero");
+        require(holder != address(0), "holder cannot be address zero");
 
-        data.setAllowed(_owner, spender, value);
-        emit Approval(_owner, spender, value);
+        data.setAllowed(holder, spender, value);
+        emit Approval(holder, spender, value);
     }
 }
