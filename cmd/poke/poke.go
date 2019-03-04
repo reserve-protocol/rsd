@@ -286,7 +286,12 @@ func parseKey(s string) *ecdsa.PrivateKey {
 	if strings.HasPrefix(s, "@") {
 		env := os.Getenv("RSVD_" + s[1:])
 		if s == "" {
-			fmt.Fprintf(os.Stderr, "To use a shorthand argument like %q, there should be a non-empty corresponding environment variable called %q\n", s, "RSVD_"+s[1:])
+			fmt.Fprintf(
+				os.Stderr,
+				"To use a shorthand argument like %q, there should be a non-empty corresponding environment variable called %q\n",
+				s,
+				"RSVD_"+s[1:],
+			)
 			os.Exit(1)
 		}
 		s = env
@@ -296,7 +301,12 @@ func parseKey(s string) *ecdsa.PrivateKey {
 	if err1 != nil || err2 != nil {
 		fmt.Fprintln(os.Stderr, "Failed to parse private key:", s)
 		if strings.HasPrefix(origS, "@") {
-			fmt.Fprintf(os.Stderr, "(From argument %q, which I expanded using the env var %v)\n", origS, "RSVD_"+origS[1:])
+			fmt.Fprintf(
+				os.Stderr,
+				"(From argument %q, which I expanded using the env var %v)\n",
+				origS,
+				"RSVD_"+origS[1:],
+			)
 			os.Exit(1)
 		}
 	}
