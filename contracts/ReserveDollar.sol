@@ -273,13 +273,10 @@ contract ReserveDollar is IERC20 {
         return true;
     }
 
-    /**
-     * Transfer approved tokens from one address to another.
-     *
-     * @param from address The address to send tokens from.
-     * @param to address The address to send tokens to.
-     * @param value uint256 The number of attotokens to send.
-     */
+    /// Transfer approved tokens from one address to another.
+    /// @param from address The address to send tokens from.
+    /// @param to address The address to send tokens to.
+    /// @param value uint256 The number of attotokens to send.
     function transferFrom(address from, address to, uint256 value)
         external
         notPaused
