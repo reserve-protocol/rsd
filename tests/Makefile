@@ -2,10 +2,10 @@
 fuzz: fuzz-total-supply fuzz-ownership
 
 fuzz-total-supply: setup
-	echidna-test EchidnaTransferTests.sol EchidnaTotalSupplyTests --config multisender.yaml
-	
+	docker run --rm -t -v `pwd`:/src -w /src reserveprotocol/echidna echidna-test EchidnaTransferTests.sol EchidnaTotalSupplyTests --config multisender.yaml
+
 fuzz-ownership: setup
-	echidna-test EchidnaOwnershipTests.sol EchidnaConstantOwnerSimple --config multisender.yaml
+	docker run --rm -t -v `pwd`:/src -w /src reserveprotocol/echidna echidna-test EchidnaOwnershipTests.sol EchidnaConstantOwnerSimple --config multisender.yaml
 
 
 
