@@ -22,7 +22,8 @@ contract ReserveDollarV2 is ReserveDollar {
 
         // Old contract off, new contract on.
         previous.pause();
-        unpause();
+        paused = false;
+        emit Unpaused(pauser);
 
         // Burn the bridge behind us.
         previous.changeMinter(address(0));

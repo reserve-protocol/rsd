@@ -170,7 +170,7 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Unpause the contract.
-    function unpause() public only(pauser) {
+    function unpause() external only(pauser) {
         paused = false;
         emit Unpaused(pauser);
     }
