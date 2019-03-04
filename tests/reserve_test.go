@@ -243,7 +243,7 @@ func (s *ReserveDollarSuite) TestApprove() {
 
 	// Owner approves spender.
 	s.requireTx(s.reserve.Approve(signer(owner), spender.address(), amount))(
-		abi.ReserveDollarApproval{From: owner.address(), To: spender.address(), Value: amount},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: amount},
 	)
 
 	// Approval should be reflected in allowance.
@@ -265,7 +265,7 @@ func (s *ReserveDollarSuite) TestIncreaseAllowance() {
 
 	// Owner approves spender through increaseAllowance.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), amount))(
-		abi.ReserveDollarApproval{From: owner.address(), To: spender.address(), Value: amount},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: amount},
 	)
 
 	// Approval should be reflected in allowance.
@@ -287,7 +287,7 @@ func (s *ReserveDollarSuite) TestIncreaseAllowanceWouldOverflow() {
 
 	// Owner approves spender for initial amount.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), initialAmount))(
-		abi.ReserveDollarApproval{From: owner.address(), To: spender.address(), Value: initialAmount},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: initialAmount},
 	)
 
 	// Owner should not be able to increase approval high enough to overflow a uint256.
@@ -303,12 +303,12 @@ func (s *ReserveDollarSuite) TestDecreaseAllowance() {
 
 	// Owner approves spender for initial amount.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), initialAmount))(
-		abi.ReserveDollarApproval{From: owner.address(), To: spender.address(), Value: initialAmount},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: initialAmount},
 	)
 
 	// Owner decreases allowance.
 	s.requireTx(s.reserve.DecreaseAllowance(signer(owner), spender.address(), decrease))(
-		abi.ReserveDollarApproval{From: owner.address(), To: spender.address(), Value: final},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: final},
 	)
 
 	// Allowance should be as we expect.
@@ -328,7 +328,7 @@ func (s *ReserveDollarSuite) TestDecreaseAllowanceUnderflow() {
 
 	// Owner approves spender for initial amount.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), initialAmount))(
-		abi.ReserveDollarApproval{From: owner.address(), To: spender.address(), Value: initialAmount},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: initialAmount},
 	)
 
 	// Owner decreases allowance fails because of underflow.
@@ -353,7 +353,7 @@ func (s *ReserveDollarSuite) TestDecreaseAllowanceSpenderFrozen() {
 
 	// Owner approves spender for initial amount.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), bigInt(10)))(
-		abi.ReserveDollarApproval{From: owner.address(), To: spender.address(), Value: bigInt(10)},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: bigInt(10)},
 	)
 
 	// Freeze spender.
@@ -380,7 +380,7 @@ func (s *ReserveDollarSuite) TestPausing() {
 
 	// Approve spender to spend bankers funds.
 	s.requireTx(s.reserve.Approve(signer(banker), spender.address(), approveAmount))(
-		abi.ReserveDollarApproval{From: banker.address(), To: spender.address(), Value: approveAmount},
+		abi.ReserveDollarApproval{Holder: banker.address(), Spender: spender.address(), Value: approveAmount},
 	)
 	s.assertAllowance(banker.address(), spender.address(), approveAmount)
 
@@ -427,19 +427,19 @@ func (s *ReserveDollarSuite) TestPausing() {
 
 	// Approving is allowed while unpaused.
 	s.requireTx(s.reserve.Approve(signer(banker), spender.address(), bigInt(2)))(
-		abi.ReserveDollarApproval{From: banker.address(), To: spender.address(), Value: bigInt(2)},
+		abi.ReserveDollarApproval{Holder: banker.address(), Spender: spender.address(), Value: bigInt(2)},
 	)
 	s.assertAllowance(banker.address(), spender.address(), bigInt(2))
 
 	// DecreaseAllowance is allowed while unpaused.
 	s.requireTx(s.reserve.DecreaseAllowance(signer(banker), spender.address(), approveAmount))(
-		abi.ReserveDollarApproval{From: banker.address(), To: spender.address(), Value: bigInt(1)},
+		abi.ReserveDollarApproval{Holder: banker.address(), Spender: spender.address(), Value: bigInt(1)},
 	)
 	s.assertAllowance(banker.address(), spender.address(), approveAmount)
 
 	// IncreaseAllowance is allowed while unpaused.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(banker), spender.address(), approveAmount))(
-		abi.ReserveDollarApproval{From: banker.address(), To: spender.address(), Value: bigInt(2)},
+		abi.ReserveDollarApproval{Holder: banker.address(), Spender: spender.address(), Value: bigInt(2)},
 	)
 	s.assertAllowance(banker.address(), spender.address(), bigInt(2))
 }
@@ -524,10 +524,10 @@ func (s *ReserveDollarSuite) TestFreezeApprovals() {
 
 	// Unfrozen account should be able to create approvals again.
 	s.requireTx(s.reserve.Approve(signer(target), recipient.address(), bigInt(1)))(
-		abi.ReserveDollarApproval{From: target.address(), To: recipient.address(), Value: bigInt(1)},
+		abi.ReserveDollarApproval{Holder: target.address(), Spender: recipient.address(), Value: bigInt(1)},
 	)
 	s.requireTx(s.reserve.IncreaseAllowance(signer(target), recipient.address(), bigInt(1)))(
-		abi.ReserveDollarApproval{From: target.address(), To: recipient.address(), Value: bigInt(2)},
+		abi.ReserveDollarApproval{Holder: target.address(), Spender: recipient.address(), Value: bigInt(2)},
 	)
 	s.assertAllowance(target.address(), recipient.address(), bigInt(2))
 
@@ -548,10 +548,10 @@ func (s *ReserveDollarSuite) TestFreezeApprovals() {
 
 	// Unfrozen account should be able to receive approvals again.
 	s.requireTx(s.reserve.Approve(signer(target), recipient.address(), bigInt(11)))(
-		abi.ReserveDollarApproval{From: target.address(), To: recipient.address(), Value: bigInt(11)},
+		abi.ReserveDollarApproval{Holder: target.address(), Spender: recipient.address(), Value: bigInt(11)},
 	)
 	s.requireTx(s.reserve.IncreaseAllowance(signer(target), recipient.address(), bigInt(7)))(
-		abi.ReserveDollarApproval{From: target.address(), To: recipient.address(), Value: bigInt(18)},
+		abi.ReserveDollarApproval{Holder: target.address(), Spender: recipient.address(), Value: bigInt(18)},
 	)
 	s.assertAllowance(target.address(), recipient.address(), bigInt(18))
 }
@@ -568,10 +568,10 @@ func (s *ReserveDollarSuite) TestFreezeTransferFrom() {
 		mintingTransfer(deployerAddress, initialAmount),
 	)
 	s.requireTx(s.reserve.Approve(s.signer, target.address(), initialAmount))(
-		abi.ReserveDollarApproval{From: deployerAddress, To: target.address(), Value: initialAmount},
+		abi.ReserveDollarApproval{Holder: deployerAddress, Spender: target.address(), Value: initialAmount},
 	)
 	s.requireTx(s.reserve.Approve(s.signer, middleman.address(), initialAmount))(
-		abi.ReserveDollarApproval{From: deployerAddress, To: middleman.address(), Value: initialAmount},
+		abi.ReserveDollarApproval{Holder: deployerAddress, Spender: middleman.address(), Value: initialAmount},
 	)
 	s.assertAllowance(s.account[0].address(), target.address(), initialAmount)
 	s.assertAllowance(s.account[0].address(), middleman.address(), initialAmount)
@@ -594,7 +594,7 @@ func (s *ReserveDollarSuite) TestFreezeTransferFrom() {
 	// Unfrozen account should now be able to call transferFrom.
 	s.requireTx(s.reserve.TransferFrom(signer(target), deployerAddress, recipient.address(), bigInt(2)))(
 		abi.ReserveDollarTransfer{From: deployerAddress, To: recipient.address(), Value: bigInt(2)},
-		abi.ReserveDollarApproval{From: deployerAddress, To: target.address(), Value: bigInt(12 - 2)},
+		abi.ReserveDollarApproval{Holder: deployerAddress, Spender: target.address(), Value: bigInt(12 - 2)},
 	)
 	s.assertBalance(recipient.address(), bigInt(2))
 
@@ -616,7 +616,7 @@ func (s *ReserveDollarSuite) TestFreezeTransferFrom() {
 	// Unfrozen account should now be able to call transferFrom.
 	s.requireTx(s.reserve.TransferFrom(signer(middleman), s.account[0].address(), recipient.address(), bigInt(5)))(
 		abi.ReserveDollarTransfer{From: deployerAddress, To: recipient.address(), Value: bigInt(5)},
-		abi.ReserveDollarApproval{From: deployerAddress, To: middleman.address(), Value: bigInt(12 - 5)},
+		abi.ReserveDollarApproval{Holder: deployerAddress, Spender: middleman.address(), Value: bigInt(12 - 5)},
 	)
 	s.assertBalance(recipient.address(), bigInt(7))
 
@@ -638,7 +638,7 @@ func (s *ReserveDollarSuite) TestFreezeTransferFrom() {
 	// Unfrozen account should now be able to call transferFrom.
 	s.requireTx(s.reserve.TransferFrom(signer(target), deployerAddress, recipient.address(), bigInt(3)))(
 		abi.ReserveDollarTransfer{From: deployerAddress, To: recipient.address(), Value: bigInt(3)},
-		abi.ReserveDollarApproval{From: deployerAddress, To: target.address(), Value: bigInt(10 - 3)},
+		abi.ReserveDollarApproval{Holder: deployerAddress, Spender: target.address(), Value: bigInt(10 - 3)},
 	)
 	s.assertBalance(recipient.address(), bigInt(10))
 }
@@ -662,7 +662,7 @@ func (s *ReserveDollarSuite) TestFreezeApprove() {
 
 	// Should be able to approve unfrozen target.
 	s.requireTx(s.reserve.Approve(s.signer, target.address(), bigInt(1)))(
-		abi.ReserveDollarApproval{From: deployerAddress, To: target.address(), Value: bigInt(1)},
+		abi.ReserveDollarApproval{Holder: deployerAddress, Spender: target.address(), Value: bigInt(1)},
 	)
 }
 
@@ -687,7 +687,7 @@ func (s *ReserveDollarSuite) TestFreezeIncreaseAllowance() {
 
 	// Should be able to increase allowance unfrozen target.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), target.address(), bigInt(1)))(
-		abi.ReserveDollarApproval{From: owner.address(), To: target.address(), Value: bigInt(1)},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: target.address(), Value: bigInt(1)},
 	)
 	s.assertAllowance(owner.address(), target.address(), bigInt(1))
 
@@ -700,7 +700,7 @@ func (s *ReserveDollarSuite) TestFreezeDecreaseAllowance() {
 
 	// Increase allowance to set up for decrease.
 	s.requireTx(s.reserve.IncreaseAllowance(signer(owner), spender.address(), bigInt(6)))(
-		abi.ReserveDollarApproval{From: owner.address(), To: spender.address(), Value: bigInt(6)},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: bigInt(6)},
 	)
 
 	// Freeze spender.
@@ -719,7 +719,7 @@ func (s *ReserveDollarSuite) TestFreezeDecreaseAllowance() {
 
 	// Should be able to decrease allowance unfrozen spender.
 	s.requireTx(s.reserve.DecreaseAllowance(signer(owner), spender.address(), bigInt(1)))(
-		abi.ReserveDollarApproval{From: owner.address(), To: spender.address(), Value: bigInt(5)},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: bigInt(5)},
 	)
 	s.assertAllowance(owner.address(), spender.address(), bigInt(5))
 }
@@ -787,13 +787,13 @@ func (s *ReserveDollarSuite) TestMintingBurningChain() {
 
 	// Approve signer for burning.
 	s.requireTx(s.reserve.Approve(signer(recipient), deployerAddress, amount))(
-		abi.ReserveDollarApproval{From: recipient.address(), To: deployerAddress, Value: amount},
+		abi.ReserveDollarApproval{Holder: recipient.address(), Spender: deployerAddress, Value: amount},
 	)
 
 	// Burn from recipient.
 	s.requireTx(s.reserve.BurnFrom(s.signer, recipient.address(), amount))(
 		abi.ReserveDollarTransfer{From: recipient.address(), To: zeroAddress(), Value: amount},
-		abi.ReserveDollarApproval{From: recipient.address(), To: deployerAddress, Value: bigInt(0)},
+		abi.ReserveDollarApproval{Holder: recipient.address(), Spender: deployerAddress, Value: bigInt(0)},
 	)
 
 	s.assertBalance(recipient.address(), bigInt(0))
@@ -824,13 +824,13 @@ func (s *ReserveDollarSuite) TestMintingTransferBurningChain() {
 
 	// Approve signer for burning.
 	s.requireTx(s.reserve.Approve(signer(target), s.account[0].address(), amount))(
-		abi.ReserveDollarApproval{From: target.address(), To: s.account[0].address(), Value: amount},
+		abi.ReserveDollarApproval{Holder: target.address(), Spender: s.account[0].address(), Value: amount},
 	)
 
 	// Burn from target.
 	s.requireTx(s.reserve.BurnFrom(s.signer, target.address(), amount))(
 		abi.ReserveDollarTransfer{From: target.address(), To: zeroAddress(), Value: amount},
-		abi.ReserveDollarApproval{From: target.address(), To: deployerAddress, Value: bigInt(0)},
+		abi.ReserveDollarApproval{Holder: target.address(), Spender: deployerAddress, Value: bigInt(0)},
 	)
 
 	s.assertBalance(target.address(), bigInt(0))
@@ -855,7 +855,7 @@ func (s *ReserveDollarSuite) TestBurnFromWouldUnderflow() {
 
 	// Approve signer for burning.
 	s.requireTx(s.reserve.Approve(signer(recipient), deployerAddress, amount))(
-		abi.ReserveDollarApproval{From: recipient.address(), To: deployerAddress, Value: amount},
+		abi.ReserveDollarApproval{Holder: recipient.address(), Spender: deployerAddress, Value: amount},
 	)
 
 	// Burn from recipient.
@@ -881,14 +881,14 @@ func (s *ReserveDollarSuite) TestTransferFrom() {
 
 	// Approve middleman to transfer funds from the sender.
 	s.requireTx(s.reserve.Approve(signer(sender), middleman.address(), amount))(
-		abi.ReserveDollarApproval{From: sender.address(), To: middleman.address(), Value: amount},
+		abi.ReserveDollarApproval{Holder: sender.address(), Spender: middleman.address(), Value: amount},
 	)
 	s.assertAllowance(sender.address(), middleman.address(), amount)
 
 	// transferFrom allows the msg.sender to send an existing approval to an arbitrary destination.
 	s.requireTx(s.reserve.TransferFrom(signer(middleman), sender.address(), recipient.address(), amount))(
 		abi.ReserveDollarTransfer{From: sender.address(), To: recipient.address(), Value: amount},
-		abi.ReserveDollarApproval{From: sender.address(), To: middleman.address(), Value: bigInt(0)},
+		abi.ReserveDollarApproval{Holder: sender.address(), Spender: middleman.address(), Value: bigInt(0)},
 	)
 	s.assertBalance(sender.address(), bigInt(0))
 	s.assertBalance(middleman.address(), bigInt(0))
@@ -916,7 +916,7 @@ func (s *ReserveDollarSuite) TestTransferFromWouldUnderflow() {
 
 	// Approve middleman to transfer funds from the sender.
 	s.requireTx(s.reserve.Approve(signer(sender), middleman.address(), approveAmount))(
-		abi.ReserveDollarApproval{From: sender.address(), To: middleman.address(), Value: approveAmount},
+		abi.ReserveDollarApproval{Holder: sender.address(), Spender: middleman.address(), Value: approveAmount},
 	)
 	s.assertAllowance(sender.address(), middleman.address(), approveAmount)
 

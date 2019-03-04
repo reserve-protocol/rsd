@@ -16,7 +16,7 @@ interface IERC20 {
     function balanceOf(address) external view returns (uint256);
     function allowance(address, address) external view returns (uint256);
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed holder, address indexed spender, uint256 value);
 }
 
 /**
