@@ -138,7 +138,7 @@ contract ReserveDollar is IERC20 {
             emit OwnerChanged(msg.sender);
         }
         owner = msg.sender;
-        nominatedOwner = msg.sender;
+        nominatedOwner = address(0);
     }
 
     /// Set `owner` to 0.
