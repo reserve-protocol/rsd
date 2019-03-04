@@ -1,20 +1,32 @@
+DOCKER?=docker
+DOCKER_RUN_ECHIDNA=$(DOCKER) run --rm -t -v `pwd`/echidna:/src -w /src reserveprotocol/echidna echidna-test
 
-fuzz: fuzz-total-supply fuzz-ownership
+fuzz: fuzz-total-supply \
+	fuzz-ownership \
+	fuzz-constant-owner-under-free-money \
+	fuzz-freezing
+
 
 fuzz-total-supply: setup
-	docker run --rm -t -v `pwd`/echidna:/src -w /src reserveprotocol/echidna echidna-test EchidnaTransferTests.sol EchidnaTotalSupplyTests --config multisender.yaml
+	$(DOCKER_RUN_ECHIDNA) EchidnaTransferTests.sol EchidnaTotalSupplyTests --config multisender.yaml
 
 fuzz-ownership: setup
-	docker run --rm -t -v `pwd`/echidna:/src -w /src reserveprotocol/echidna echidna-test EchidnaOwnershipTests.sol EchidnaConstantOwnerSimple --config multisender.yaml
+	$(DOCKER_RUN_ECHIDNA) EchidnaOwnershipTests.sol EchidnaConstantOwnerSimple --config multisender_with_owner.yaml
 
 
+fuzz-constant-owner-under-free-money: setup 
+	$(DOCKER_RUN_ECHIDNA) EchidnaOwnershipTests.sol EchidnaConstantOwnerFreeMoney --config multisender.yaml
+
+fuzz-freezing: setup
+	$(DOCKER_RUN_ECHIDNA) EchidnaFreezeTests.sol EchidnaFrozenAccount --config multisender.yaml
 
 setup: echidna/ReserveDollar.sol \
        echidna/ReserveDollarEternalStorage.sol \
        echidna/zeppelin/SafeMath.sol
 
 echidna/ReserveDollar.sol: ../contracts/ReserveDollar.sol
-	cp ../contracts/ReserveDollar.sol echidna/
+	rm $@ || true
+	ln $< $@
 
 echidna/ReserveDollarEternalStorage.sol: ../contracts/ReserveDollarEternalStorage.sol
 	echo "\033[31;1m[WARNING] Removing onlyOwner modifier from eternal storage.\nechidna\033[0m"
@@ -22,11 +34,13 @@ echidna/ReserveDollarEternalStorage.sol: ../contracts/ReserveDollarEternalStorag
 
 echidna/zeppelin/SafeMath.sol: ../contracts/zeppelin/SafeMath.sol
 	mkdir -p echidna/zeppelin
-	cp ../contracts/zeppelin/SafeMath.sol echidna/zeppelin/
+	rm $@ || true
+	ln $< $@
 
 clean:
 	rm echidna/ReserveDollar.sol \
        echidna/ReserveDollarEternalStorage.sol \
        echidna/zeppelin/SafeMath.sol
 
-.PHONY: fuzz fuzz-total-supply fuzz-ownership
+.PHONY: fuzz fuzz-total-supply fuzz-ownership fuzz-constant-owner-under-free-money \
+	fuzz-freezing

@@ -10,6 +10,11 @@ contract ReserveDollarInner is ReserveDollar {
     function testFixtureChangeOwner(address newOwner) public {
         owner = newOwner;
     }
+    
+    function testFixtureIncreaseAllowance(address from, address spender, uint256 addedValue) public returns (bool) {
+        _approve(from, spender, addedValue);
+        return true;
+    }
 }
 
 contract WrappedReserveDollar {

@@ -17,6 +17,7 @@ coverage: abi/bindings
 
 fmt:
 	npx solium -d contracts/ --fix
+	npx solium -d tests/ --fix
 
 poke: abi/bindings cmd/poke/poke.go
 	go install ./cmd/poke
