@@ -167,8 +167,9 @@ func (*Backend) call(method string, in, out interface{}) error {
 	}
 }
 
-// CallContract overrides the same method in *ethclient.Client (and satisfies CallContract from go-ethereum's bind.ContractCaller interface).
-// Instead of sending the call through the underlying client, it sends it through 0x's library.
+// CallContract overrides the same method in *ethclient.Client (and satisfies CallContract from
+// go-ethereum's bind.ContractCaller interface).  Instead of sending the call through the
+// underlying client, it sends it through 0x's library.
 func (b *Backend) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	var result string
 	block := "latest"
@@ -207,18 +208,21 @@ func (b *Backend) CallContract(ctx context.Context, call ethereum.CallMsg, block
 	return output, nil
 }
 
-// EstimateGas overrides the same method in *ethclient.Client (and satisfies EstimateGas from go-ethereum's bind.ContractTransactor interface).
-// Instead of sending the call through the underlying client, it returns a hard-coded result.
+// EstimateGas overrides the same method in *ethclient.Client (and satisfies EstimateGas from
+// go-ethereum's bind.ContractTransactor interface). Instead of sending the call through the
+// underlying client, it returns a hard-coded result.
 //
-// The hard-coded result is used so that transactions never fail in the gas estimation stage. Instead they will fail when the transaction
-// is mined. This is assumed to be desirable behavior because it causes the transaction to actually run, rather than not, which causes the
+// The hard-coded result is used so that transactions never fail in the gas estimation stage.
+// Instead they will fail when the transaction is mined. This is assumed to be desirable behavior
+// because it causes the transaction to actually run, rather than not, which causes the
 // corresponding code to get traced for code coverage, rather than not.
 func (b *Backend) EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error) {
 	return 8000000000, nil
 }
 
-// SendTransaction overrides the same method in *ethclient.Client (and satisfies SendTransaction from go-ethereum's bind.ContractTransactor interface).
-// Instead of sending the call through the underlying client, it sends it through 0x's library.
+// SendTransaction overrides the same method in *ethclient.Client (and satisfies SendTransaction
+// from go-ethereum's bind.ContractTransactor interface). Instead of sending the call through the
+// underlying client, it sends it through 0x's library.
 func (b *Backend) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	buf := new(bytes.Buffer)
 	err := tx.EncodeRLP(buf)
