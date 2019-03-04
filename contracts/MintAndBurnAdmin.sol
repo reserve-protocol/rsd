@@ -11,8 +11,9 @@ contract MintAndBurnAdmin {
     struct Proposal {
         address addr;
         uint256 value;
-        uint256 time;
         bool isMint;
+        uint256 time;
+        bool closed;
     }
 
     // DATA
@@ -21,15 +22,14 @@ contract MintAndBurnAdmin {
     uint256 public constant delay = 12 hours;
     address public admin;
 
-    uint256 public nextProposal;
-    mapping(uint256 => Proposal) public proposals;
-    mapping(uint256 => bool) public closed;
+    Proposal[] public proposals;
 
     // EVENTS
 
     event ProposalCreated(uint256 index, address indexed addr, uint256 value, bool isMint, uint256 delayUntil);
     event ProposalConfirmed(uint256 index, address indexed addr, uint256 value, bool isMint);
     event ProposalCancelled(uint256 index, address indexed addr, uint256 value, bool isMint);
+    event AllProposalsCancelled();
 
     // FUNCTIONALITY
 
@@ -38,10 +38,13 @@ contract MintAndBurnAdmin {
         admin = msg.sender;
     }
 
-    /// Propose a new mint or burn, which can be confirmed after 12 hours.
-    function propose(address addr, uint256 value, bool isMint) external {
+    modifier onlyAdmin() {
         require(msg.sender == admin, "must be admin");
+        _;
+    }
 
+    /// Propose a new mint or burn, which can be confirmed after 12 hours.
+    function propose(address addr, uint256 value, bool isMint) external onlyAdmin {
         // Delay by at least 12 hours.
         // We are relying on block.timestamp for this, and aware of the possibility of its
         // manipulation by miners. But given the in-protocol bounds on the change in
@@ -49,33 +52,36 @@ contract MintAndBurnAdmin {
         // solium-disable-next-line security/no-block-members
         uint256 delayUntil = now + delay;
 
-        proposals[nextProposal] = Proposal({
+        proposals.push(Proposal({
             addr: addr,
             value: value,
             isMint: isMint,
-            time: delayUntil
-        });
+            time: delayUntil,
+            closed: false
+        }));
 
-        emit ProposalCreated(nextProposal, addr, value, isMint, delayUntil);
-
-        nextProposal++;
+        emit ProposalCreated(proposals.length - 1, addr, value, isMint, delayUntil);
     }
 
     /// Cancel a proposed mint or burn.
-    function cancel(uint256 index, address addr, uint256 value, bool isMint) external {
+    function cancel(uint256 index, address addr, uint256 value, bool isMint) external onlyAdmin {
         // Check authorization.
-        require(msg.sender == admin, "must be admin");
         requireMatchingOpenProposal(index, addr, value, isMint);
 
         // Cancel proposal.
-        closed[index] = true;
+        proposals[index].closed = true;
         emit ProposalCancelled(index, addr, value, isMint);
     }
 
+    /// Cancel all proposals.
+    function cancelAll() external onlyAdmin {
+        proposals.length = 0;
+        emit AllProposalsCancelled();
+    }
+
     /// Confirm and execute a proposed mint or burn, if enough time has passed since the proposal.
-    function confirm(uint256 index, address addr, uint256 value, bool isMint) external {
+    function confirm(uint256 index, address addr, uint256 value, bool isMint) external onlyAdmin {
         // Check authorization.
-        require(msg.sender == admin, "must be admin");
         requireMatchingOpenProposal(index, addr, value, isMint);
 
         // See commentary above about using `now`.
@@ -83,7 +89,7 @@ contract MintAndBurnAdmin {
         require(proposals[index].time < now, "too early");
 
         // Record execution of proposal.
-        closed[index] = true;
+        proposals[index].closed = true;
         emit ProposalConfirmed(index, addr, value, isMint);
 
         // Proceed with execution of proposal.
@@ -96,8 +102,7 @@ contract MintAndBurnAdmin {
 
     /// Throw unless the given proposal exists and matches `addr`, `value`, and `isMint`.
     function requireMatchingOpenProposal(uint256 index, address addr, uint256 value, bool isMint) private view {
-        require(index < nextProposal, "no such proposal");
-        require(!closed[index], "proposal already closed");
+        require(!proposals[index].closed, "proposal already closed");
 
         // Slither reports "dangerous strict equality" for each of these, but it's OK.
         // These equalities are to confirm that the proposal entered is equal to the

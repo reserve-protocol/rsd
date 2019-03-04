@@ -223,18 +223,9 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 	amount := big.NewInt(100)
 	futureAmount := big.NewInt(1000)
 
-	// nextProposal should be 0.
-	nextProposal, err := s.adminContract.NextProposal(nil)
-	s.Nil(err)
-	s.Equal(common.Big0.String(), nextProposal.String(), "nextProposal should be 0")
-
-	// Proposals should be empty at 0 index.
-	proposal, err := s.adminContract.Proposals(nil, common.Big0)
-	s.Nil(err)
-	s.Equal(common.Address{}, proposal.Addr, "0th proposal address should be the zero value")
-	s.Equal(common.Big0.String(), proposal.Value.String(), "0th proposal value should be the zero value")
-	s.Equal(common.Big0.String(), proposal.Time.String(), "0th proposal should be zero value")
-	s.Equal(false, proposal.IsMint, "0th proposal isMint should be zero value")
+	// Retrieving the 0th proposal should fail when no proposals have been created yet.
+	_, err := s.adminContract.Proposals(nil, common.Big0)
+	s.Error(err, "there should be no proposals on a newly-initialized MintAndBurnAdmin")
 
 	// Trying to propose as someone other than the admin signer should fail.
 	s.requireTxFails(s.adminContract.Propose(s.signer, recipient, amount, true))
@@ -250,10 +241,9 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 		},
 	)
 
-	// nextProposal should now be 1.
-	nextProposal, err = s.adminContract.NextProposal(nil)
-	s.Nil(err)
-	s.Equal(common.Big1.String(), nextProposal.String(), "nextProposal should now be 1")
+	// Retrieving the 0th proposal should now work.
+	_, err = s.adminContract.Proposals(nil, common.Big0)
+	s.NoError(err)
 
 	// Advance time by 12 hours.
 	s.Require().NoError(s.node.(backend).AdjustTime(12 * time.Hour))
@@ -332,9 +322,9 @@ func (s *MintAndBurnAdminSuite) TestCancel() {
 	)
 
 	// Should be marked as closed.
-	closed, err := s.adminContract.Closed(nil, index)
+	proposal, err := s.adminContract.Proposals(nil, index)
 	s.NoError(err)
-	s.True(closed)
+	s.True(proposal.Closed)
 
 	// Should not be able to cancel a second time.
 	s.requireTxFails(s.adminContract.Cancel(s.adminSigner, index, recipient, amount, true))
@@ -389,13 +379,48 @@ func (s *MintAndBurnAdminSuite) TestConfirm() {
 	)
 
 	// Should be marked as closed.
-	closed, err := s.adminContract.Closed(nil, index)
+	proposal, err := s.adminContract.Proposals(nil, index)
 	s.NoError(err)
-	s.True(closed)
+	s.True(proposal.Closed)
 
 	// Should not be able to confirm proposal a second time.
 	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, index, recipient, amount, true))
 
 	// Confirm mint went through.
 	s.assertBalance(recipient, amount)
+}
+
+func (s *MintAndBurnAdminSuite) TestCancelAll() {
+	// Create several proposals.
+	for i := 0; i < 5; i++ {
+		recipient := common.BigToAddress(bigInt(uint32(i)))
+		value := bigInt(uint32((i + 1) * 100))
+		s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, value, i%2 == 0))(
+			s.mintProposalCreated(i, recipient, value, i%2 == 0),
+		)
+	}
+
+	// Confirm that CancelAll cannot be called by someone unauthorized.
+	s.requireTxFails(s.adminContract.CancelAll(signer(s.account[2])))
+
+	// Cancel all.
+	s.requireTx(s.adminContract.CancelAll(s.adminSigner))(
+		abi.MintAndBurnAdminAllProposalsCancelled{},
+	)
+
+	// Confirm that we can no longer retrieve the 0th proposal.
+	_, err := s.adminContract.Proposals(nil, bigInt(0))
+	s.Error(err, "should not be able to retrieve proposals after cancelling all")
+}
+
+func (s *MintAndBurnAdminSuite) mintProposalCreated(
+	i int, addr common.Address, value *big.Int, isMint bool,
+) abi.MintAndBurnAdminProposalCreated {
+	return abi.MintAndBurnAdminProposalCreated{
+		Index:      bigInt(uint32(i)),
+		Addr:       addr,
+		Value:      value,
+		IsMint:     isMint,
+		DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
+	}
 }
