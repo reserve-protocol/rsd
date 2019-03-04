@@ -63,7 +63,7 @@ func (s *MintAndBurnAdminSuite) SetupSuite() {
 
 	// Create a utility contract to get the current block time.
 	{
-		// Bytecode and ABI from compiling this Solidity file offline:
+		// bytecode and utilABI are the result of compiling this Solidity file offline:
 		/*
 			pragma solidity ^0.5.4;
 			contract Utility {
