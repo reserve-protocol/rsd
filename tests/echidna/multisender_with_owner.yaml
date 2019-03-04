@@ -5,4 +5,4 @@ solcArgs: ""
 testLimit: 10000
 seqLen: 10
 shrinkLimit: 5000
-dashboard: true
+dashboard: false
