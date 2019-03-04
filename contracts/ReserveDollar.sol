@@ -220,17 +220,17 @@ contract ReserveDollar is IERC20 {
     // ==== Token transfers, allowances, minting, and burning ====
 
 
-    /// @return how many tokens exist.
+    /// @return how many attotokens exist.
     function totalSupply() external view returns (uint256) {
         return _totalSupply;
     }
 
-    /// @return how many tokens are held by `holder`.
+    /// @return how many attotokens are held by `holder`.
     function balanceOf(address holder) external view returns (uint256) {
         return data.balance(holder);
     }
 
-    /// @return how many tokens `holder` has allowed `spender` to control.
+    /// @return how many attotokens `holder` has allowed `spender` to control.
     function allowance(address holder, address spender) external view returns (uint256) {
         return data.allowed(holder, spender);
     }
@@ -248,7 +248,7 @@ contract ReserveDollar is IERC20 {
     }
 
     /**
-     * Approve `spender` to spend `value` attotkens on behalf of `msg.sender`.
+     * Approve `spender` to spend `value` attotokens on behalf of `msg.sender`.
      *
      * Beware that changing a nonzero allowance with this method brings the risk that
      * someone may use both the old and the new allowance by unfortunate transaction ordering. One
@@ -277,7 +277,7 @@ contract ReserveDollar is IERC20 {
      *
      * @param from address The address to send tokens from
      * @param to address The address to send tokens to
-     * @param value uint256 The amount of tokens to send
+     * @param value uint256 The number of attotokens to send
      */
     function transferFrom(address from, address to, uint256 value)
         external
@@ -295,7 +295,7 @@ contract ReserveDollar is IERC20 {
     /// Increase `spender`'s allowance of the sender's tokens.
     /// @dev From MonolithDAO Token.sol
     /// @param spender The address which will spend the funds.
-    /// @param addedValue How many attotokens tokens to increase the allowance by.
+    /// @param addedValue How many attotokens to increase the allowance by.
     function increaseAllowance(address spender, uint256 addedValue)
         external
         notPaused
@@ -323,7 +323,7 @@ contract ReserveDollar is IERC20 {
     }
 
     /// @dev Transfer of `value` attotokens from `from` to `to`.
-    /// Internal; doesn't cheeck permissions.
+    /// Internal; doesn't check permissions.
     function _transfer(address from, address to, uint256 value) internal {
         require(to != address(0), "can't transfer to address zero");
 
@@ -357,7 +357,7 @@ contract ReserveDollar is IERC20 {
         emit Transfer(account, address(0), value);
     }
 
-    /// @dev Set `spender`'s allowance on `holder`'s tokens to `value`.
+    /// @dev Set `spender`'s allowance on `holder`'s tokens to `value` attotokens.
     /// Internal; doesn't check permissions.
     function _approve(address holder, address spender, uint256 value) internal {
         require(spender != address(0), "spender cannot be address zero");

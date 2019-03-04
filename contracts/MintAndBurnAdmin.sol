@@ -44,9 +44,10 @@ contract MintAndBurnAdmin {
 
         // Delay by at least 12 hours.
         // We are relying on block.timestamp for this, and aware of the possibility of its
-        // manipulation by miners. But given the in-protocol bounds on the change in block.timestamp
-        // and the way we are using it, we are satisfied with this choice.
-        uint256 delayUntil = now + delay; // solium-disable-line security/no-block-members
+        // manipulation by miners. But given the in-protocol bounds on the change in
+        // block.timestamp and the way we are using it, we are satisfied with this choice.
+        // solium-disable-next-line security/no-block-members
+        uint256 delayUntil = now + delay;
 
         proposals[nextProposal] = Proposal({
             addr: addr,
