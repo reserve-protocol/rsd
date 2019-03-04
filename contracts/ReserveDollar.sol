@@ -259,8 +259,8 @@ contract ReserveDollar is IERC20 {
      *
      * A simpler workaround is to use `increaseAllowance` or `decreaseAllowance`, below.
      *
-     * @param spender address The address which will spend the funds
-     * @param value uint256 How many attotokens to allow `spender` to spend
+     * @param spender address The address which will spend the funds.
+     * @param value uint256 How many attotokens to allow `spender` to spend.
      */
     function approve(address spender, uint256 value)
         external
@@ -276,9 +276,9 @@ contract ReserveDollar is IERC20 {
     /**
      * Transfer approved tokens from one address to another.
      *
-     * @param from address The address to send tokens from
-     * @param to address The address to send tokens to
-     * @param value uint256 The number of attotokens to send
+     * @param from address The address to send tokens from.
+     * @param to address The address to send tokens to.
+     * @param value uint256 The number of attotokens to send.
      */
     function transferFrom(address from, address to, uint256 value)
         external
@@ -295,8 +295,8 @@ contract ReserveDollar is IERC20 {
 
     /// Increase `spender`'s allowance of the sender's tokens.
     /// @dev From MonolithDAO Token.sol
-    /// @param spender The address which will spend the funds
-    /// @param addedValue How many attotokens to increase the allowance by
+    /// @param spender The address which will spend the funds.
+    /// @param addedValue How many attotokens to increase the allowance by.
     function increaseAllowance(address spender, uint256 addedValue)
         external
         notPaused
@@ -310,8 +310,8 @@ contract ReserveDollar is IERC20 {
 
     /// Decrease `spender`'s allowance of the sender's tokens.
     /// @dev From MonolithDAO Token.sol
-    /// @param spender The address which will spend the funds
-    /// @param subtractedValue How many attotokens to decrease the allowance by
+    /// @param spender The address which will spend the funds.
+    /// @param subtractedValue How many attotokens to decrease the allowance by.
     function decreaseAllowance(address spender, uint256 subtractedValue)
         external
         notPaused
