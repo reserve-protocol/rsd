@@ -331,10 +331,10 @@ func (s *MintAndBurnAdminSuite) TestCancel() {
 		},
 	)
 
-	// Should be marked as completed.
-	completed, err := s.adminContract.Completed(nil, index)
-	s.Nil(err)
-	s.Equal(true, completed)
+	// Should be marked as closed.
+	closed, err := s.adminContract.Closed(nil, index)
+	s.NoError(err)
+	s.True(closed)
 
 	// Should not be able to cancel a second time.
 	s.requireTxFails(s.adminContract.Cancel(s.adminSigner, index, recipient, amount, true))
@@ -388,10 +388,10 @@ func (s *MintAndBurnAdminSuite) TestConfirm() {
 		mintingTransfer(recipient, amount),
 	)
 
-	// Should be marked as completed.
-	completed, err := s.adminContract.Completed(nil, index)
-	s.Nil(err)
-	s.Equal(true, completed)
+	// Should be marked as closed.
+	closed, err := s.adminContract.Closed(nil, index)
+	s.NoError(err)
+	s.True(closed)
 
 	// Should not be able to confirm proposal a second time.
 	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, index, recipient, amount, true))

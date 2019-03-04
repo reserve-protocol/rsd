@@ -24,7 +24,8 @@ interface IERC20 {
  * @dev An ERC-20 token with minting, burning, pausing, and user freezing.
  * Based on OpenZeppelin's [implementation](https://github.com/OpenZeppelin/openzeppelin-solidity/blob/41aa39afbc13f0585634061701c883fe512a5469/contracts/token/ERC20/ERC20.sol).
  *
- * Non-constant-sized data is held in ReserveDollarEternalStorage, to facilitate potential future upgrades.
+ * Non-constant-sized data is held in ReserveDollarEternalStorage,
+ * to facilitate potential future upgrades.
  */
 contract ReserveDollar is IERC20 {
     using SafeMath for uint256;
@@ -56,7 +57,7 @@ contract ReserveDollar is IERC20 {
     // EVENTS
 
 
-    // Auth roles changed
+    // Auth role change events
     event OwnerChanged(address indexed newOwner);
     event MinterChanged(address indexed newMinter);
     event PauserChanged(address indexed newPauser);
@@ -107,19 +108,19 @@ contract ReserveDollar is IERC20 {
         _;
     }
 
-    /// Change who holds the `minter` role
+    /// Change who holds the `minter` role.
     function changeMinter(address newMinter) external onlyOwnerOr(minter) {
         minter = newMinter;
         emit MinterChanged(newMinter);
     }
 
-    /// Change who holds the `pauser` role
+    /// Change who holds the `pauser` role.
     function changePauser(address newPauser) external onlyOwnerOr(pauser) {
         pauser = newPauser;
         emit PauserChanged(newPauser);
     }
 
-    /// Change the holds the `freezer` role
+    /// Change who holds the `freezer` role.
     function changeFreezer(address newFreezer) external onlyOwnerOr(freezer) {
         freezer = newFreezer;
         emit FreezerChanged(newFreezer);
@@ -181,21 +182,23 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Freeze token transactions for a particular address.
-    function freeze(address who) external only(freezer) {
-        require(data.frozenTime(who) == 0, "account already frozen");
-        // In `wipe` we use block.timestamp to check that enough time has passed since this
-        // freeze happened. That required time delay -- 4 weeks -- is a long time relative
-        // to the maximum drift of block.timestamp, so it is fine to trust the miner here.
+    function freeze(address account) external only(freezer) {
+        require(data.frozenTime(account) == 0, "account already frozen");
+
+        // In `wipe` we use block.timestamp (aka `now`) to check that enough time has passed since
+        // this freeze happened. That required time delay -- 4 weeks -- is a long time relative to
+        // the maximum drift of block.timestamp, so it is fine to trust the miner here.
         // solium-disable-next-line security/no-block-members
-        data.setFrozenTime(who, now);
-        emit Frozen(freezer, who);
+        data.setFrozenTime(account, now);
+
+        emit Frozen(freezer, account);
     }
 
     /// Unfreeze token transactions for a particular address.
-    function unfreeze(address who) external only(freezer) {
-        require(data.frozenTime(who) > 0, "account not frozen");
-        data.setFrozenTime(who, 0);
-        emit Unfrozen(freezer, who);
+    function unfreeze(address account) external only(freezer) {
+        require(data.frozenTime(account) > 0, "account not frozen");
+        data.setFrozenTime(account, 0);
+        emit Unfrozen(freezer, account);
     }
 
     /// Modifies a function to run only when the `account` is not frozen.
@@ -205,31 +208,30 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Burn the balance of an account that has been frozen for at least 4 weeks.
-    function wipe(address who) external only(freezer) {
-        require(data.frozenTime(who) > 0, "cannot wipe unfrozen account");
-        // Use block.timestamp to check that enough time has passed. 4 weeks is a long time relative to
-        // the maximum drift of block.timestamp, so it is fine to trust the miner here.
+    function wipe(address account) external only(freezer) {
+        require(data.frozenTime(account) > 0, "cannot wipe unfrozen account");
+        // See commentary above about using block.timestamp.
         // solium-disable-next-line security/no-block-members
-        require(data.frozenTime(who) + 4 weeks < now, "cannot wipe frozen account before 4 weeks");
-        _burn(who, data.balance(who));
-        emit Wiped(freezer, who);
+        require(data.frozenTime(account) + 4 weeks < now, "cannot wipe frozen account before 4 weeks");
+        _burn(account, data.balance(account));
+        emit Wiped(freezer, account);
     }
 
 
     // ==== Token transfers, allowances, minting, and burning ====
 
 
-    /// @return how many tokens exist.
+    /// @return how many attotokens exist.
     function totalSupply() external view returns (uint256) {
         return _totalSupply;
     }
 
-    /// @return how many tokens are held by `holder`.
+    /// @return how many attotokens are held by `holder`.
     function balanceOf(address holder) external view returns (uint256) {
         return data.balance(holder);
     }
 
-    /// @return how many tokens `holder` has allowed `spender` to control.
+    /// @return how many attotokens `holder` has allowed `spender` to control.
     function allowance(address holder, address spender) external view returns (uint256) {
         return data.allowed(holder, spender);
     }
@@ -247,7 +249,7 @@ contract ReserveDollar is IERC20 {
     }
 
     /**
-     * Approve `spender` to spend `value` attotkens on behalf of `msg.sender`.
+     * Approve `spender` to spend `value` attotokens on behalf of `msg.sender`.
      *
      * Beware that changing a nonzero allowance with this method brings the risk that
      * someone may use both the old and the new allowance by unfortunate transaction ordering. One
@@ -257,7 +259,7 @@ contract ReserveDollar is IERC20 {
      *
      * A simpler workaround is to use `increaseAllowance` or `decreaseAllowance`, below.
      *
-     * @param spender address The address which will spend the funds
+     * @param spender address The address which will spend the funds.
      * @param value uint256 How many attotokens to allow `spender` to spend.
      */
     function approve(address spender, uint256 value)
@@ -271,13 +273,10 @@ contract ReserveDollar is IERC20 {
         return true;
     }
 
-    /**
-     * Transfer approved tokens from one address to another.
-     *
-     * @param from address The address to send tokens from
-     * @param to address The address to send tokens to
-     * @param value uint256 The amount of tokens to send
-     */
+    /// Transfer approved tokens from one address to another.
+    /// @param from address The address to send tokens from.
+    /// @param to address The address to send tokens to.
+    /// @param value uint256 The number of attotokens to send.
     function transferFrom(address from, address to, uint256 value)
         external
         notPaused
@@ -294,7 +293,7 @@ contract ReserveDollar is IERC20 {
     /// Increase `spender`'s allowance of the sender's tokens.
     /// @dev From MonolithDAO Token.sol
     /// @param spender The address which will spend the funds.
-    /// @param addedValue How many attotokens tokens to increase the allowance by.
+    /// @param addedValue How many attotokens to increase the allowance by.
     function increaseAllowance(address spender, uint256 addedValue)
         external
         notPaused
@@ -322,7 +321,7 @@ contract ReserveDollar is IERC20 {
     }
 
     /// @dev Transfer of `value` attotokens from `from` to `to`.
-    /// Internal; doesn't cheeck permissions.
+    /// Internal; doesn't check permissions.
     function _transfer(address from, address to, uint256 value) internal {
         require(to != address(0), "can't transfer to address zero");
 
@@ -356,7 +355,7 @@ contract ReserveDollar is IERC20 {
         emit Transfer(account, address(0), value);
     }
 
-    /// @dev Set `spender`'s allowance on `holder`'s tokens to `value`.
+    /// @dev Set `spender`'s allowance on `holder`'s tokens to `value` attotokens.
     /// Internal; doesn't check permissions.
     function _approve(address holder, address spender, uint256 value) internal {
         require(spender != address(0), "spender cannot be address zero");
