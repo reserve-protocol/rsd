@@ -21,7 +21,7 @@ contract ReserveDollarEternalStorage {
 
     // ===== auth =====
 
-    address public owner; // TODO: https://github.com/reserve-protocol/reserve-dollar/issues/8
+    address public owner;
     address public escapeHatch;
 
     event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
