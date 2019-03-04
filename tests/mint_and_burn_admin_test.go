@@ -131,13 +131,7 @@ func (s *MintAndBurnAdminSuite) TestAdminCanMint() {
 
 	// Propose a new mint.
 	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
-		abi.MintAndBurnAdminProposalCreated{
-			Index:      bigInt(0),
-			Addr:       recipient,
-			Value:      amount,
-			IsMint:     true,
-			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
-		},
+		s.proposalCreated(0, recipient, amount, true),
 	)
 
 	// Trying to confirm it immediately should fail.
@@ -148,12 +142,7 @@ func (s *MintAndBurnAdminSuite) TestAdminCanMint() {
 
 	// Trying to confirm it should now succeed.
 	s.requireTx(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))(
-		abi.MintAndBurnAdminProposalConfirmed{
-			Index:  bigInt(0),
-			Addr:   recipient,
-			Value:  amount,
-			IsMint: true,
-		},
+		s.proposalConfirmed(0, recipient, amount, true),
 		mintingTransfer(recipient, amount),
 	)
 
@@ -170,23 +159,12 @@ func (s *MintAndBurnAdminSuite) TestAdminCanCancelMinting() {
 
 	// Propose a new mint.
 	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
-		abi.MintAndBurnAdminProposalCreated{
-			Index:      bigInt(0),
-			Addr:       recipient,
-			Value:      amount,
-			IsMint:     true,
-			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
-		},
+		s.proposalCreated(0, recipient, amount, true),
 	)
 
 	// And then cancel that minting.
 	s.requireTx(s.adminContract.Cancel(s.adminSigner, common.Big0, recipient, amount, true))(
-		abi.MintAndBurnAdminProposalCancelled{
-			Index:  bigInt(0),
-			Addr:   recipient,
-			Value:  amount,
-			IsMint: true,
-		},
+		s.proposalCancelled(0, recipient, amount, true),
 	)
 
 	// Advance time.
@@ -232,13 +210,7 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 
 	// Propose a new mint.
 	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
-		abi.MintAndBurnAdminProposalCreated{
-			Index:      bigInt(0),
-			Addr:       recipient,
-			Value:      amount,
-			IsMint:     true,
-			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
-		},
+		s.proposalCreated(0, recipient, amount, true),
 	)
 
 	// Retrieving the 0th proposal should now work.
@@ -250,13 +222,7 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 
 	// Propose a second mint.
 	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, futureAmount, true))(
-		abi.MintAndBurnAdminProposalCreated{
-			Index:      bigInt(1),
-			Addr:       recipient,
-			Value:      futureAmount,
-			IsMint:     true,
-			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
-		},
+		s.proposalCreated(1, recipient, futureAmount, true),
 	)
 
 	// Proposals should now contain the first mint proposal at index 0
@@ -287,13 +253,7 @@ func (s *MintAndBurnAdminSuite) TestCancel() {
 
 	// Create a proposal.
 	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
-		abi.MintAndBurnAdminProposalCreated{
-			Index:      bigInt(0),
-			Addr:       recipient,
-			Value:      amount,
-			IsMint:     true,
-			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
-		},
+		s.proposalCreated(0, recipient, amount, true),
 	)
 
 	// Trying to cancel as someone other than the admin should fail.
@@ -313,12 +273,7 @@ func (s *MintAndBurnAdminSuite) TestCancel() {
 
 	// Should be able to cancel proposal when supplied properly.
 	s.requireTx(s.adminContract.Cancel(s.adminSigner, index, recipient, amount, true))(
-		abi.MintAndBurnAdminProposalCancelled{
-			Index:  bigInt(0),
-			Addr:   recipient,
-			Value:  amount,
-			IsMint: true,
-		},
+		s.proposalCancelled(0, recipient, amount, true),
 	)
 
 	// Should be marked as closed.
@@ -337,13 +292,7 @@ func (s *MintAndBurnAdminSuite) TestConfirm() {
 
 	// Create a proposal.
 	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
-		abi.MintAndBurnAdminProposalCreated{
-			Index:      bigInt(0),
-			Addr:       recipient,
-			Value:      amount,
-			IsMint:     true,
-			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
-		},
+		s.proposalCreated(0, recipient, amount, true),
 	)
 
 	// Should not be able to confirm until time has passed.
@@ -369,12 +318,7 @@ func (s *MintAndBurnAdminSuite) TestConfirm() {
 
 	// Confirm proposal.
 	s.requireTx(s.adminContract.Confirm(s.adminSigner, index, recipient, amount, true))(
-		abi.MintAndBurnAdminProposalConfirmed{
-			Index:  bigInt(0),
-			Addr:   recipient,
-			Value:  amount,
-			IsMint: true,
-		},
+		s.proposalConfirmed(0, recipient, amount, true),
 		mintingTransfer(recipient, amount),
 	)
 
@@ -396,7 +340,7 @@ func (s *MintAndBurnAdminSuite) TestCancelAll() {
 		recipient := common.BigToAddress(bigInt(uint32(i)))
 		value := bigInt(uint32((i + 1) * 100))
 		s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, value, i%2 == 0))(
-			s.mintProposalCreated(i, recipient, value, i%2 == 0),
+			s.proposalCreated(i, recipient, value, i%2 == 0),
 		)
 	}
 
@@ -413,7 +357,7 @@ func (s *MintAndBurnAdminSuite) TestCancelAll() {
 	s.Error(err, "should not be able to retrieve proposals after cancelling all")
 }
 
-func (s *MintAndBurnAdminSuite) mintProposalCreated(
+func (s *MintAndBurnAdminSuite) proposalCreated(
 	i int, addr common.Address, value *big.Int, isMint bool,
 ) abi.MintAndBurnAdminProposalCreated {
 	return abi.MintAndBurnAdminProposalCreated{
@@ -422,5 +366,27 @@ func (s *MintAndBurnAdminSuite) mintProposalCreated(
 		Value:      value,
 		IsMint:     isMint,
 		DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
+	}
+}
+
+func (s *MintAndBurnAdminSuite) proposalConfirmed(
+	i int, addr common.Address, value *big.Int, isMint bool,
+) abi.MintAndBurnAdminProposalConfirmed {
+	return abi.MintAndBurnAdminProposalConfirmed{
+		Index:  bigInt(uint32(i)),
+		Addr:   addr,
+		Value:  value,
+		IsMint: isMint,
+	}
+}
+
+func (s *MintAndBurnAdminSuite) proposalCancelled(
+	i int, addr common.Address, value *big.Int, isMint bool,
+) abi.MintAndBurnAdminProposalCancelled {
+	return abi.MintAndBurnAdminProposalCancelled{
+		Index:  bigInt(uint32(i)),
+		Addr:   addr,
+		Value:  value,
+		IsMint: isMint,
 	}
 }
