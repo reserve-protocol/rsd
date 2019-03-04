@@ -139,6 +139,7 @@ func (b *Backend) Close() error {
 	return b.cmd.Wait()
 }
 
+// call makes HTTP calls to the Node.js process.
 func (*Backend) call(method string, in, out interface{}) error {
 	b, err := json.Marshal(map[string]interface{}{
 		"method": method,
