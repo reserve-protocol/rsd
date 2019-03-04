@@ -144,3 +144,16 @@ We aim to never need to upgrade the Storage contract. To this end, `ReserveDolla
 If a Logic upgrade requires us to expand the vocabulary of the Storage contract to new arrays or maps, then we will deploy a second Storage contract to store just that new vocabulary, and have the new Logic contract operate over both.
 
 If we *really must* upgrade the Storage contract, then we'll need to carry out a full on-chain data migration -- which is possible, but slow, expensive, and beyond the scope of this document.
+
+# Some Contract Properties
+
+In `ReserveDollar`:
+
+- `ReserveDollar` emits a `Transfer` event any time token balances change.
+- `ReserveDollar` emits an `Approval` event any time allowances change.
+- Balances only change inside the functions `mint`, `_transfer`, and `_burn`.
+- Total supply only changes inside `mint` and `_burn`.
+- Allowances only change inside `_approve`.
+- `balanceOf[addr]` does not increase when `frozenTime[addr]` is nonzero.
+- `balanceOf[addr]` does not decrease when `frozenTime[addr]` is nonzero, _except_ through `wipe`.
+- Balances and allowances never change when `paused` is true.
