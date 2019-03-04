@@ -361,8 +361,10 @@ func (s *ReserveDollarSuite) TestDecreaseAllowanceSpenderFrozen() {
 		abi.ReserveDollarFrozen{Freezer: deployerAddress, Account: spender.address()},
 	)
 
-	// Owner decreases allowance fails because of spender is frozen.
-	s.requireTxFails(s.reserve.DecreaseAllowance(signer(owner), spender.address(), bigInt(2)))
+	// The owner CAN decrease the allowance of a frozen spender.
+	s.requireTx(s.reserve.DecreaseAllowance(signer(owner), spender.address(), bigInt(2)))(
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: bigInt(8)},
+	)
 }
 
 func (s *ReserveDollarSuite) TestPausing() {
@@ -708,20 +710,22 @@ func (s *ReserveDollarSuite) TestFreezeDecreaseAllowance() {
 		abi.ReserveDollarFrozen{Freezer: deployerAddress, Account: spender.address()},
 	)
 
-	// Should not be able to decrease allowance frozen spender.
-	s.requireTxFails(s.reserve.DecreaseAllowance(signer(owner), spender.address(), bigInt(4)))
-	s.assertAllowance(owner.address(), spender.address(), bigInt(6))
+	// Should be able to decrease allowance frozen spender.
+	s.requireTx(s.reserve.DecreaseAllowance(signer(owner), spender.address(), bigInt(4)))(
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: bigInt(2)},
+	)
+	s.assertAllowance(owner.address(), spender.address(), bigInt(2))
 
 	// Unfreeze spender.
 	s.requireTx(s.reserve.Unfreeze(s.signer, spender.address()))(
 		abi.ReserveDollarUnfrozen{Freezer: deployerAddress, Account: spender.address()},
 	)
 
-	// Should be able to decrease allowance unfrozen spender.
+	// Should still be able to decrease allowance unfrozen spender.
 	s.requireTx(s.reserve.DecreaseAllowance(signer(owner), spender.address(), bigInt(1)))(
-		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: bigInt(5)},
+		abi.ReserveDollarApproval{Holder: owner.address(), Spender: spender.address(), Value: bigInt(1)},
 	)
-	s.assertAllowance(owner.address(), spender.address(), bigInt(5))
+	s.assertAllowance(owner.address(), spender.address(), bigInt(1))
 }
 
 func (s *ReserveDollarSuite) TestWiping() {

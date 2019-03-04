@@ -313,7 +313,8 @@ contract ReserveDollar is IERC20 {
         external
         notPaused
         notFrozen(msg.sender)
-        notFrozen(spender)
+        // This is the one case in which changing the allowance of a frozen spender is allowed.
+        // notFrozen(spender)
         returns (bool)
     {
         _approve(msg.sender, spender, data.allowed(msg.sender, spender).sub(subtractedValue));
