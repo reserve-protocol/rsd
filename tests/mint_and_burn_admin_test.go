@@ -174,8 +174,6 @@ func (s *MintAndBurnAdminSuite) TestAdminCanCancelMinting() {
 	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, bigInt(0), recipient, amount, true))
 }
 
-// Unit tests
-
 func (s *MintAndBurnAdminSuite) TestConstructor() {
 	addr, err := s.adminContract.Admin(nil)
 	s.Nil(err)
