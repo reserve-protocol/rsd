@@ -157,7 +157,7 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Change the name and ticker symbol of this token.
-    function changeName(string memory newName, string memory newSymbol) public only(owner) {
+    function changeName(string calldata newName, string calldata newSymbol) external only(owner) {
         name = newName;
         symbol = newSymbol;
         emit NameChanged(newName, newSymbol);
