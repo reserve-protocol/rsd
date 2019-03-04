@@ -64,7 +64,7 @@ func (s *ReserveDollarSuite) TearDownSuite() {
 	}
 }
 
-// Before test runs before each test in the suite.
+// BeforeTest runs before each test in the suite.
 func (s *ReserveDollarSuite) BeforeTest(suiteName, testName string) {
 	// Re-deploy Reserve and store a handle to the Go binding and the contract address.
 	reserveAddress, tx, reserve, err := abi.DeployReserveDollar(s.signer, s.node)
