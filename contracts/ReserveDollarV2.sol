@@ -11,7 +11,7 @@ contract ReserveDollarV2 is ReserveDollar {
         paused = true;
     }
 
-    function completeHandoff(address previousImplementation) public only(owner) {
+    function completeHandoff(address previousImplementation) external only(owner) {
         ReserveDollar previous = ReserveDollar(previousImplementation);
         data = ReserveDollarEternalStorage(previous.getEternalStorageAddress());
         previous.acceptOwnership();
