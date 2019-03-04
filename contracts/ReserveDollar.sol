@@ -320,16 +320,6 @@ contract ReserveDollar is IERC20 {
         return true;
     }
 
-    /// @dev Transfer of `value` attotokens from `from` to `to`.
-    /// Internal; doesn't check permissions.
-    function _transfer(address from, address to, uint256 value) internal {
-        require(to != address(0), "can't transfer to address zero");
-
-        data.subBalance(from, value);
-        data.addBalance(to, value);
-        emit Transfer(from, to, value);
-    }
-
     /// Mint `value` new attotokens to `account`.
     function mint(address account, uint256 value) external notPaused only(minter) {
         require(account != address(0), "can't mint to address zero");
@@ -343,6 +333,16 @@ contract ReserveDollar is IERC20 {
     function burnFrom(address account, uint256 value) external notPaused only(minter) {
         _burn(account, value);
         _approve(account, msg.sender, data.allowed(account, msg.sender).sub(value));
+    }
+
+    /// @dev Transfer of `value` attotokens from `from` to `to`.
+    /// Internal; doesn't check permissions.
+    function _transfer(address from, address to, uint256 value) internal {
+        require(to != address(0), "can't transfer to address zero");
+
+        data.subBalance(from, value);
+        data.addBalance(to, value);
+        emit Transfer(from, to, value);
     }
 
     /// @dev Burn `value` attotokens from `account`.
