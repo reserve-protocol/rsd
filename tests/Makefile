@@ -25,16 +25,26 @@ setup: echidna/ReserveDollar.sol \
        echidna/zeppelin/SafeMath.sol
 
 echidna/ReserveDollar.sol: ../contracts/ReserveDollar.sol
-	rm $@ || true
+	rm $@
+#echo "\033[31;1m[DANGER] Inserting internal minting function into ReserveDollar contract.\n    This is the naive approach to give users a balance in the constructor of a\nfuzz test contract. The contract being fuzzed is no longer exactly the\nReserveDollar contract!\033[0m"
+#sed -e 's|\(function mint(address account, uint256 value) external\)|function testFixtureMint(address account, uint256 value) internal notPaused only(minter) {\n        require(account != address(0), "cant mint to address zero");\n\n        _totalSupply = _totalSupply.add(value);\n        data.addBalance(account, value);\n        emit Transfer(address(0), account, value); \n    }\n\n    \1|' $< > $@
+# Use hard links so that changes to files copied into the tests/ dir will show
+# up in version control. This reduces odds of "worked on my machine". We use
+# hard links because solc refuses to accept soft links
 	ln $< $@
 
 echidna/ReserveDollarEternalStorage.sol: ../contracts/ReserveDollarEternalStorage.sol
-	echo "\033[31;1m[WARNING] Removing onlyOwner modifier from eternal storage.\nechidna\033[0m"
-	sed -e 's|require(msg.sender == owner, "onlyOwner");||' $< > $@
+	rm $<
+# echo "\033[31;1m[WARNING] Removing onlyOwner modifier from eternal storage.\nechidna\033[0m"
+# sed -e 's|require(msg.sender == owner, "onlyOwner");||' $< > $@
+	ln $< $@
 
 echidna/zeppelin/SafeMath.sol: ../contracts/zeppelin/SafeMath.sol
 	mkdir -p echidna/zeppelin
 	rm $@ || true
+# Use hard links so that changes to files copied into the tests/ dir will show
+# up in version control. This reduces odds of "worked on my machine". We use
+# hard links because solc refuses to accept soft links
 	ln $< $@
 
 clean:
