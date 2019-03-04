@@ -1,18 +1,27 @@
 package tests
 
 import (
+	"bytes"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
+	ethabi "github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/compiler"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/reserve-protocol/reserve-dollar/abi"
 )
+
+var delayInSeconds = big.NewInt(12 * 60 * 60)
 
 func TestMintAndBurnAdmin(t *testing.T) {
 	suite.Run(t, new(MintAndBurnAdminSuite))
@@ -25,6 +34,8 @@ type MintAndBurnAdminSuite struct {
 	adminContractAddress common.Address
 	adminAccount         account
 	adminSigner          *bind.TransactOpts
+
+	utilContract *bind.BoundContract
 }
 
 var (
@@ -34,6 +45,12 @@ var (
 	_ suite.BeforeTest    = &MintAndBurnAdminSuite{}
 	_ suite.SetupAllSuite = &MintAndBurnAdminSuite{}
 )
+
+func (s *MintAndBurnAdminSuite) BlockTime() *big.Int {
+	result := new(big.Int)
+	s.NoError(s.utilContract.Call(nil, &result, "time"))
+	return result
+}
 
 func (s *MintAndBurnAdminSuite) SetupSuite() {
 	s.setup()
@@ -46,12 +63,40 @@ func (s *MintAndBurnAdminSuite) SetupSuite() {
 
 	// Always use the fast node without coverage.
 	s.createFastNode()
+
+	// Create a utility contract to get the current block time.
+	{
+		compiled, err := compiler.CompileSolidityString("", `
+			pragma solidity ^0.5.4;
+			contract Utility {
+				function time() public view returns(uint256) {
+					return now;
+				}
+			}
+		`)
+		s.Require().NoError(err)
+
+		contract := compiled["<stdin>:Utility"]
+
+		marshaled, err := json.Marshal(contract.Info.AbiDefinition)
+		s.Require().NoError(err)
+
+		utilABI, err := ethabi.JSON(bytes.NewReader(marshaled))
+		s.Require().NoError(err)
+
+		code, err := hex.DecodeString(strings.TrimPrefix(contract.Code, "0x"))
+		s.Require().NoError(err)
+
+		var tx *types.Transaction
+		_, tx, s.utilContract, err = bind.DeployContract(s.signer, utilABI, code, s.node)
+		s.requireTx(tx, err)( /* assert zero events */ )
+	}
 }
 
 func (s *MintAndBurnAdminSuite) BeforeTest(suiteName, testName string) {
 	// Deploy Reserve Dollar.
 	reserveAddress, tx, reserve, err := abi.DeployReserveDollar(s.signer, s.node)
-	s.requireTx(tx, err)
+	s.requireTx(tx, err)( /* assert zero events */ )
 	s.reserve = reserve
 	s.reserveAddress = reserveAddress
 
@@ -61,10 +106,17 @@ func (s *MintAndBurnAdminSuite) BeforeTest(suiteName, testName string) {
 
 	// Deploy admin contract.
 	s.adminContractAddress, tx, s.adminContract, err = abi.DeployMintAndBurnAdmin(s.adminSigner, s.node, reserveAddress)
-	s.requireTx(tx, err)
+	s.requireTx(tx, err)( /* assert zero events */ )
+
+	s.logParsers = map[common.Address]logParser{
+		s.reserveAddress:       s.reserve,
+		s.adminContractAddress: s.adminContract,
+	}
 
 	// Give minting power to admin contract.
-	s.requireTx(reserve.ChangeMinter(s.signer, s.adminContractAddress))
+	s.requireTx(reserve.ChangeMinter(s.signer, s.adminContractAddress))(
+		abi.ReserveDollarMinterChanged{NewMinter: s.adminContractAddress},
+	)
 }
 
 func (s *MintAndBurnAdminSuite) TestAdminContractIsMinter() {
@@ -78,24 +130,38 @@ func (s *MintAndBurnAdminSuite) TestAdminCanMint() {
 	amount := big.NewInt(100)
 
 	// Propose a new mint.
-	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))
+	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
+		abi.MintAndBurnAdminProposalCreated{
+			Index:      bigInt(0),
+			Addr:       recipient,
+			Value:      amount,
+			IsMint:     true,
+			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
+		},
+	)
 
 	// Trying to confirm it immediately should fail.
-	_, err := s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true)
-	s.Require().Error(err)
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))
 
 	// Advance time.
 	s.Require().NoError(s.node.(backend).AdjustTime(13 * time.Hour))
 
 	// Trying to confirm it should now succeed.
-	s.requireTx(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))
+	s.requireTx(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))(
+		abi.MintAndBurnAdminProposalConfirmed{
+			Index:  bigInt(0),
+			Addr:   recipient,
+			Value:  amount,
+			IsMint: true,
+		},
+		mintingTransfer(recipient, amount),
+	)
 
 	// The mint should have happened.
 	s.assertBalance(recipient, amount)
 
 	// Trying to confirm a second time should fail.
-	_, err = s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true)
-	s.Error(err)
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))
 }
 
 func (s *MintAndBurnAdminSuite) TestAdminCanCancelMinting() {
@@ -103,24 +169,37 @@ func (s *MintAndBurnAdminSuite) TestAdminCanCancelMinting() {
 	amount := big.NewInt(100)
 
 	// Propose a new mint.
-	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))
+	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
+		abi.MintAndBurnAdminProposalCreated{
+			Index:      bigInt(0),
+			Addr:       recipient,
+			Value:      amount,
+			IsMint:     true,
+			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
+		},
+	)
 
 	// And then cancel that minting.
-	s.requireTx(s.adminContract.Cancel(s.adminSigner, common.Big0, recipient, amount, true))
+	s.requireTx(s.adminContract.Cancel(s.adminSigner, common.Big0, recipient, amount, true))(
+		abi.MintAndBurnAdminProposalCancelled{
+			Index:  bigInt(0),
+			Addr:   recipient,
+			Value:  amount,
+			IsMint: true,
+		},
+	)
 
 	// Advance time.
 	s.Require().NoError(s.node.(backend).AdjustTime(14 * time.Hour))
 
 	// Trying to confirm it should now fail, even though time has advanced.
-	_, err := s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true)
-	s.Require().Error(err)
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))
 
 	// The mint should not have happened.
 	s.assertBalance(recipient, common.Big0)
 
 	// Trying to confirm a second time should fail.
-	_, err = s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true)
-	s.Error(err)
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))
 }
 
 // TODO: test changing admin
@@ -161,7 +240,15 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 	s.requireTxFails(s.adminContract.Propose(s.signer, recipient, amount, true))
 
 	// Propose a new mint.
-	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))
+	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
+		abi.MintAndBurnAdminProposalCreated{
+			Index:      bigInt(0),
+			Addr:       recipient,
+			Value:      amount,
+			IsMint:     true,
+			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
+		},
+	)
 
 	// nextProposal should now be 1.
 	nextProposal, err = s.adminContract.NextProposal(nil)
@@ -172,7 +259,15 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 	s.Require().NoError(s.node.(backend).AdjustTime(12 * time.Hour))
 
 	// Propose a second mint.
-	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, futureAmount, true))
+	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, futureAmount, true))(
+		abi.MintAndBurnAdminProposalCreated{
+			Index:      bigInt(1),
+			Addr:       recipient,
+			Value:      futureAmount,
+			IsMint:     true,
+			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
+		},
+	)
 
 	// Proposals should now contain the first mint proposal at index 0
 	proposalOne, err := s.adminContract.Proposals(nil, common.Big0)
@@ -201,7 +296,15 @@ func (s *MintAndBurnAdminSuite) TestCancel() {
 	index := common.Big0
 
 	// Create a proposal.
-	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))
+	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
+		abi.MintAndBurnAdminProposalCreated{
+			Index:      bigInt(0),
+			Addr:       recipient,
+			Value:      amount,
+			IsMint:     true,
+			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
+		},
+	)
 
 	// Trying to cancel as someone other than the admin should fail.
 	s.requireTxFails(s.adminContract.Cancel(s.signer, index, recipient, amount, true))
@@ -219,7 +322,14 @@ func (s *MintAndBurnAdminSuite) TestCancel() {
 	s.requireTxFails(s.adminContract.Cancel(s.adminSigner, common.Big1, recipient, amount, true))
 
 	// Should be able to cancel proposal when supplied properly.
-	s.requireTx(s.adminContract.Cancel(s.adminSigner, index, recipient, amount, true))
+	s.requireTx(s.adminContract.Cancel(s.adminSigner, index, recipient, amount, true))(
+		abi.MintAndBurnAdminProposalCancelled{
+			Index:  bigInt(0),
+			Addr:   recipient,
+			Value:  amount,
+			IsMint: true,
+		},
+	)
 
 	// Should be marked as completed.
 	completed, err := s.adminContract.Completed(nil, index)
@@ -236,7 +346,15 @@ func (s *MintAndBurnAdminSuite) TestConfirm() {
 	index := common.Big0
 
 	// Create a proposal.
-	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))
+	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
+		abi.MintAndBurnAdminProposalCreated{
+			Index:      bigInt(0),
+			Addr:       recipient,
+			Value:      amount,
+			IsMint:     true,
+			DelayUntil: new(big.Int).Add(s.BlockTime(), delayInSeconds),
+		},
+	)
 
 	// Should not be able to confirm until time has passed.
 	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, index, recipient, amount, true))
@@ -260,7 +378,15 @@ func (s *MintAndBurnAdminSuite) TestConfirm() {
 	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, common.Big1, recipient, amount, true))
 
 	// Confirm proposal.
-	s.requireTx(s.adminContract.Confirm(s.adminSigner, index, recipient, amount, true))
+	s.requireTx(s.adminContract.Confirm(s.adminSigner, index, recipient, amount, true))(
+		abi.MintAndBurnAdminProposalConfirmed{
+			Index:  bigInt(0),
+			Addr:   recipient,
+			Value:  amount,
+			IsMint: true,
+		},
+		mintingTransfer(recipient, amount),
+	)
 
 	// Should be marked as completed.
 	completed, err := s.adminContract.Completed(nil, index)

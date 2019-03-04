@@ -22,6 +22,10 @@ import (
 	"github.com/reserve-protocol/reserve-dollar/soltools"
 )
 
+type logParser interface {
+	ParseLog(*types.Log) (fmt.Stringer, error)
+}
+
 // TestSuite holds functionality common between our two test suites.
 //
 // It knows how to create a connection to an Ethereum node, it holds a list of accounts
@@ -39,6 +43,8 @@ type TestSuite struct {
 	reserveAddress        common.Address
 	eternalStorage        *abi.ReserveDollarEternalStorage
 	eternalStorageAddress common.Address
+
+	logParsers map[common.Address]logParser
 }
 
 // requireTx requires that a transaction is successfully mined and does
@@ -59,15 +65,9 @@ func (s *TestSuite) requireTx(tx *types.Transaction, err error) func(assertEvent
 	return func(assertEvent ...fmt.Stringer) {
 		if s.Equal(len(assertEvent), len(receipt.Logs), "did not get the expected number of events") {
 			for i, wantEvent := range assertEvent {
-				var parser func(*types.Log) (fmt.Stringer, error)
-				switch receipt.Logs[i].Address {
-				case s.reserveAddress:
-					parser = s.reserve.ParseLog
-				case s.eternalStorageAddress:
-					parser = s.eternalStorage.ParseLog
-				}
+				parser := s.logParsers[receipt.Logs[i].Address]
 				if s.NotNil(parser, "got an event from an unexpected contract address: "+receipt.Logs[i].Address.Hex()) {
-					gotEvent, err := parser(receipt.Logs[i])
+					gotEvent, err := parser.ParseLog(receipt.Logs[i])
 					if s.NoErrorf(err, "parsing event %v", i) {
 						s.Equal(wantEvent.String(), gotEvent.String())
 					}
