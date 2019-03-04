@@ -1,3 +1,5 @@
+// This is the JavaScript end of the Go-JavaScript bridge implemented in this package.
+
 // Imports
 const util = require('util');
 const http = require('http');
