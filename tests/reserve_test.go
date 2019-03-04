@@ -1018,8 +1018,9 @@ func (s *ReserveDollarSuite) TestUpgrade() {
 
 	// Make the switch.
 	s.requireTx(s.reserve.NominateNewOwner(s.signer, newTokenAddress))()
-	// TODO test the events emitted by the handoff
-	s.requireTx(newToken.CompleteHandoff(signer(newKey), s.reserveAddress))
+	s.requireTx(newToken.CompleteHandoff(signer(newKey), s.reserveAddress)) /*
+		not asserting events because there are a lot and we don't care much about them
+	*/
 
 	// Old token should not be functional.
 	s.requireTxFails(s.reserve.Mint(s.signer, recipient.address(), big.NewInt(1500)))
