@@ -317,7 +317,12 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Mint `value` new attotokens to `account`.
-    function mint(address account, uint256 value) external notPaused only(minter) {
+    function mint(address account, uint256 value)
+        external
+        notPaused
+        notFrozen(account)
+        only(minter)
+    {
         require(account != address(0), "can't mint to address zero");
 
         totalSupply = totalSupply.add(value);
@@ -326,7 +331,12 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Burn `value` attotokens from `account`, if sender has that much allowance from `account`.
-    function burnFrom(address account, uint256 value) external notPaused only(minter) {
+    function burnFrom(address account, uint256 value)
+        external
+        notPaused
+        notFrozen(account)
+        only(minter)
+    {
         _burn(account, value);
         _approve(account, msg.sender, data.allowed(account, msg.sender).sub(value));
     }
