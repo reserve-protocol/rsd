@@ -149,7 +149,7 @@ func (s *TestSuite) createSlowCoverageNode() {
 	// to advance by one block, upgrading the Ethereum version and allowing the rest of the tests
 	// to pass.
 	tx, _ := types.SignTx(
-		types.NewTransaction(0, common.Address{100}, common.Big0, 21000, common.Big1, nil),
+		types.NewTransaction(0, common.Address{100}, bigInt(0), 21000, bigInt(1), nil),
 		types.HomesteadSigner{},
 		s.account[0].key,
 	)

@@ -126,7 +126,7 @@ func (s *MintAndBurnAdminSuite) TestAdminContractIsMinter() {
 }
 
 func (s *MintAndBurnAdminSuite) TestAdminCanMint() {
-	recipient := common.BigToAddress(common.Big1)
+	recipient := common.BigToAddress(bigInt(1))
 	amount := big.NewInt(100)
 
 	// Propose a new mint.
@@ -135,13 +135,13 @@ func (s *MintAndBurnAdminSuite) TestAdminCanMint() {
 	)
 
 	// Trying to confirm it immediately should fail.
-	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, bigInt(0), recipient, amount, true))
 
 	// Advance time.
 	s.Require().NoError(s.node.(backend).AdjustTime(13 * time.Hour))
 
 	// Trying to confirm it should now succeed.
-	s.requireTx(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))(
+	s.requireTx(s.adminContract.Confirm(s.adminSigner, bigInt(0), recipient, amount, true))(
 		s.proposalConfirmed(0, recipient, amount, true),
 		mintingTransfer(recipient, amount),
 	)
@@ -150,11 +150,11 @@ func (s *MintAndBurnAdminSuite) TestAdminCanMint() {
 	s.assertBalance(recipient, amount)
 
 	// Trying to confirm a second time should fail.
-	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, bigInt(0), recipient, amount, true))
 }
 
 func (s *MintAndBurnAdminSuite) TestAdminCanCancelMinting() {
-	recipient := common.BigToAddress(common.Big1)
+	recipient := common.BigToAddress(bigInt(1))
 	amount := big.NewInt(100)
 
 	// Propose a new mint.
@@ -163,7 +163,7 @@ func (s *MintAndBurnAdminSuite) TestAdminCanCancelMinting() {
 	)
 
 	// And then cancel that minting.
-	s.requireTx(s.adminContract.Cancel(s.adminSigner, common.Big0, recipient, amount, true))(
+	s.requireTx(s.adminContract.Cancel(s.adminSigner, bigInt(0), recipient, amount, true))(
 		s.proposalCancelled(0, recipient, amount, true),
 	)
 
@@ -171,13 +171,13 @@ func (s *MintAndBurnAdminSuite) TestAdminCanCancelMinting() {
 	s.Require().NoError(s.node.(backend).AdjustTime(14 * time.Hour))
 
 	// Trying to confirm it should now fail, even though time has advanced.
-	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, bigInt(0), recipient, amount, true))
 
 	// The mint should not have happened.
-	s.assertBalance(recipient, common.Big0)
+	s.assertBalance(recipient, bigInt(0))
 
 	// Trying to confirm a second time should fail.
-	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, common.Big0, recipient, amount, true))
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, bigInt(0), recipient, amount, true))
 }
 
 // TODO: test changing admin
@@ -197,12 +197,12 @@ func (s *MintAndBurnAdminSuite) TestConstructor() {
 }
 
 func (s *MintAndBurnAdminSuite) TestPropose() {
-	recipient := common.BigToAddress(common.Big1)
+	recipient := common.BigToAddress(bigInt(1))
 	amount := big.NewInt(100)
 	futureAmount := big.NewInt(1000)
 
 	// Retrieving the 0th proposal should fail when no proposals have been created yet.
-	_, err := s.adminContract.Proposals(nil, common.Big0)
+	_, err := s.adminContract.Proposals(nil, bigInt(0))
 	s.Error(err, "there should be no proposals on a newly-initialized MintAndBurnAdmin")
 
 	// Trying to propose as someone other than the admin signer should fail.
@@ -214,7 +214,7 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 	)
 
 	// Retrieving the 0th proposal should now work.
-	_, err = s.adminContract.Proposals(nil, common.Big0)
+	_, err = s.adminContract.Proposals(nil, bigInt(0))
 	s.NoError(err)
 
 	// Advance time by 12 hours.
@@ -226,9 +226,9 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 	)
 
 	// Proposals should now contain the first mint proposal at index 0
-	proposalOne, err := s.adminContract.Proposals(nil, common.Big0)
+	proposalOne, err := s.adminContract.Proposals(nil, bigInt(0))
 	s.Nil(err)
-	proposalTwo, err := s.adminContract.Proposals(nil, common.Big1)
+	proposalTwo, err := s.adminContract.Proposals(nil, bigInt(1))
 	s.Nil(err)
 
 	// Check proposal one is correct
@@ -247,9 +247,9 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 }
 
 func (s *MintAndBurnAdminSuite) TestCancel() {
-	recipient := common.BigToAddress(common.Big1)
+	recipient := common.BigToAddress(bigInt(1))
 	amount := big.NewInt(100)
-	index := common.Big0
+	index := bigInt(0)
 
 	// Create a proposal.
 	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
@@ -260,16 +260,16 @@ func (s *MintAndBurnAdminSuite) TestCancel() {
 	s.requireTxFails(s.adminContract.Cancel(s.signer, index, recipient, amount, true))
 
 	// Trying to cancel with mismatching recipient should fail.
-	s.requireTxFails(s.adminContract.Cancel(s.adminSigner, index, common.BigToAddress(common.Big2), amount, true))
+	s.requireTxFails(s.adminContract.Cancel(s.adminSigner, index, common.BigToAddress(bigInt(2)), amount, true))
 
 	// Trying to cancel with mismatching amount should fail.
-	s.requireTxFails(s.adminContract.Cancel(s.adminSigner, index, recipient, common.Big1, true))
+	s.requireTxFails(s.adminContract.Cancel(s.adminSigner, index, recipient, bigInt(1), true))
 
 	// Trying to cancel with mismatching isMint should fail.
 	s.requireTxFails(s.adminContract.Cancel(s.adminSigner, index, recipient, amount, false))
 
 	// Trying to cancel with mismatching index should fail.
-	s.requireTxFails(s.adminContract.Cancel(s.adminSigner, common.Big1, recipient, amount, true))
+	s.requireTxFails(s.adminContract.Cancel(s.adminSigner, bigInt(1), recipient, amount, true))
 
 	// Should be able to cancel proposal when supplied properly.
 	s.requireTx(s.adminContract.Cancel(s.adminSigner, index, recipient, amount, true))(
@@ -286,9 +286,9 @@ func (s *MintAndBurnAdminSuite) TestCancel() {
 }
 
 func (s *MintAndBurnAdminSuite) TestConfirm() {
-	recipient := common.BigToAddress(common.Big1)
+	recipient := common.BigToAddress(bigInt(1))
 	amount := big.NewInt(100)
-	index := common.Big0
+	index := bigInt(0)
 
 	// Create a proposal.
 	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, amount, true))(
@@ -305,16 +305,16 @@ func (s *MintAndBurnAdminSuite) TestConfirm() {
 	s.requireTxFails(s.adminContract.Confirm(s.signer, index, recipient, amount, true))
 
 	// Trying to confirm with mismatching recipient should fail.
-	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, index, common.BigToAddress(common.Big2), amount, true))
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, index, common.BigToAddress(bigInt(2)), amount, true))
 
 	// Trying to confirm with mismatching amount should fail.
-	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, index, recipient, common.Big1, true))
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, index, recipient, bigInt(1), true))
 
 	// Trying to confirm with mismatching isMint should fail.
 	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, index, recipient, amount, false))
 
 	// Trying to confirm with mismatching index should fail.
-	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, common.Big1, recipient, amount, true))
+	s.requireTxFails(s.adminContract.Confirm(s.adminSigner, bigInt(1), recipient, amount, true))
 
 	// Confirm proposal.
 	s.requireTx(s.adminContract.Confirm(s.adminSigner, index, recipient, amount, true))(
