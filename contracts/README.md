@@ -75,31 +75,36 @@ The only role in the `MintAndBurnAdmin` contract is `admin`, and only the `admin
 
 - Propose new minting and burning actions. (`propose`)
 - Cancel proposals before they're executed. (`cancel`)
+- Cancel all current proposals. (`cancelAll`)
 - Confirm proposals once they've been proposed for 12 hours. (`confirm`)
 
-# Notable Technical Workflows
-Our plans for some workflows. These explanations are intended both to document our less-obvious workflow plans, and to aid in understanding those elements of our smart contracts set up to facilitate those flows.
+# Some Technical Workflows
+These explanations are intended both to document our less-obvious workflow plans, and to aid in understanding those elements of our smart contracts set up to facilitate those flows.
 
 ## Minting and Burning
 The `minter` role in the `ReserveDollar` contract is expected to be held by a deployed `MintAndBurnAdmin` contract. This is a somewhat complicated choice, so it's worth noting the rationale:
 
 Minting and burning are frequent and necessary administration actions in the life of our contract. We'll need to do this perhaps several times a day during normal operations. That means that the private key with minting-and-burning authorization will need to be on-site and relatively accessible. *That* means that it's a prime target for a potential attacker. If that key was able to arbitrarily and quickly mint tokens, this would leave us with substantial weakness to exfiltration or insider attack.
 
-We should expect that this key will get stolen _sometimes_. We have to have a useful response to such theft in some productive way.
+We should _expect_ that this key will get stolen. We need a useful response to that theft. Here's the plan:
 
-The plan, then, is to hold the private key named by `MintAndBurnAdmin.admin`, and for the `ReserveDollar.minter` to be the `MintAndBurnAdmin` contract address. `MintAndBurnAdmin` can take arbitrary minting and burning actions by proposing the action, waiting at least 12 hours without cancelling the action, and then confirming the action.
+`ReserveDollar.minter` will be the address of a  `MintAndBurnAdmin` contract. We will hold the private key for the `MintAndBurnAdmin.admin` account.  `MintAndBurnAdmin` performs arbitrary minting and burning when its `admin` proposes an action, waits 12 hours without cancelling the proposal, and then confirms the proposal. If the `admin` cancels a proposal, it cannot later be confirmed.
 
-So, if an attacker gets to be `MintAndBurnAdmin.admin`, they can easily DoS our minting and burning actions, but we can easily DoS their minting and burning actions. The `MintAndBurnAdmin.admin` does _not_ have the ability to transfer the `admin` address, so we can keep this up until we recover the `ReserveDollar.owner` key from its off-site location. We can deploy a new `MintAndBurnAdmin` contract with a new `admin` address, and once we have the `owner` key, we make the new contract the new `minter`.
+So, suppose an attacker gets the private key to `MintAndBurnAdmin.admin`, both we and they can act as that `admin`. What can they do?
+- If they try to mint or burn tokens, we can easily cancel their proposals.
+- If they issue many minting or burning proposals, we can cheaply cancel their proposals once every few hours with `cancelAll`.
+- They can cancel all of our proposals, causing a denial of service on new mints and burns. This will remain true until we deploy a new `MintAndBurnAdmin` contract with a new `admin` address, and make that new contract's address the new `ReserveDollar.minter`. We can do once we recover our `owner` key from off-site. This may take longer than 12 hours, but will not be longer than 7 days.
+- They can _not_ transfer the `admin` address to some other account, because `MintAndBurnAdmin.admin` does _not_ have the ability to change the `admin` address. Thus, the attacker can't thereby deny our ability to carry out the above attack responses.
 
 ## Transferring Ownership
-`ReserveDollar.owner` is the master key for the overall token. In the case where we need to update `ReserveDollar.owner`, we would undergo substantial expense if we accidentally, say, change the `owner` to an address we do not actually control. Since this will be a highly infrequent update, we should expect bitrot and human error.
+`ReserveDollar.owner` is the master key for the overall token. If we need to update `owner`, we would take a serious loss if we accidentally changed the `owner` to an address that we do not control. Since changing `owner` should be highly infrequent, we should expect bit-rot and human error in these changes.
 
-To mitigate this risk, we require an accepting transaction from the newly-nominated `owner` address before actually setting `owner`. We encode this handshake with the functions `nominateNewOwner` and `acceptOwnership`:
-- Only owner can call `nominateNewOwner(nominee)`, which just sets `nominatedOwner = nominee`.
-- Only `owner` or `nominatedOwner` can call `acceptOwnership`, which clears `nominatedOwner`, sets `owner = msg.sender`, and emits an `OwnerChanged` event if the owner changed.
+To mitigate this risk, `ReserveDollar` require an transaction from the newly-nominated `owner` before it actually changes `owner`. We encode this two-step handshake in functions `nominateNewOwner` and `acceptOwnership`:
+- Only `owner` can call `nominateNewOwner(nominee)`, which just sets `nominatedOwner = nominee`.
+- Only `owner` or `nominatedOwner` can call `acceptOwnership()`, which clears `nominatedOwner`, sets `owner = msg.sender`, and emits an `OwnerChanged` event if the owner changed.
 
 ## Upgrading
-We do not have specific intentions to upgrade or migrate the `ReserveDollar` contract, but we intend to be prepared to do so in case of unforeseen failure modes. We've decided not to use the `delegatecall` pattern for this purpose; it's a central example of code being magic instead of boring. (And it requires lots of consistency properties that cross-cut the usual semantics of the implementation language! Worst kind of magic! Panic! Panic! Run away! Considered harmful! -- @fiddlemath )
+We do not have specific intentions to upgrade or migrate the `ReserveDollar` contract, but we intend to be prepared to do so in case of unforeseen failure modes. We've decided not to use the `delegatecall` pattern for this purpose; it's a central example of code being magic instead of boring. (And it requires consistency properties that cross-cut standard programmer models of the implementation language! Worst kind of magic! Panic! Panic! Considered Harmful; Run Away!)
 
 The three major smart contracts in the system now serve three *contract roles*:
 
@@ -107,12 +112,17 @@ The three major smart contracts in the system now serve three *contract roles*:
 - `ReserveDollarEternalStorage` fills the Storage role.
 - `MintAndBurnAdmin` fills the MinterAdmin role.
 
-These roles aren't precisely represented in the code; rather, they're roles that need to be satisfied in the current contract layout. The intended organization of these contract roles is that there are references both ways between the Logic role and each of the other two roles, and all contracts check these references for authorization.
+There should be bidirectional references between the Logic role and each of the other roles. In the current implementation, those references are:
+
+- `ReserveDollar.data` <--> `ReserveDollarEternalStorage.owner`
+- `ReserveDollar.minter` <--> `MintAndBurnAdmin.reserve`
+
+Also, the Logic contract should be referred to by [ENS](https://ens.domains/), so that clients are able to double-check that they have an up-to-date address for that contract. (Certainly, this isn't yet standardized among clients, but it is The Right Way™.)
 
 ### Upgrading MinterAdmin
 Suppose we need to upgrade the contract in the MinterAdmin role to `NewAdmin`. The upgrade path is pretty simple:
 
-1. As `admin`, deploy `NewAdmin`, initializing its `reserve` pointer to the address of the deployed `ReserveDollar` contract. Call the address of the `NewAdmin` deployment `newAdminAddr`.
+1. As `admin`, deploy `NewAdmin`. Initialize its `reserve` pointer to the `ReserveDollar` contract address. Call the address of the `NewAdmin` deployment `newAdminAddr`.
 2. As `ReserveDollar.owner`, call `changeMinter(newAdminAddr)`.
 
 ### Upgrading Logic
@@ -133,4 +143,4 @@ We aim to never need to upgrade the Storage contract. To this end, `ReserveDolla
 
 If a Logic upgrade requires us to expand the vocabulary of the Storage contract to new arrays or maps, then we will deploy a second Storage contract to store just that new vocabulary, and have the new Logic contract operate over both.
 
-If we really must upgrade the Storage contract, then we'll need to carry out a full on-chain data migration -- which is possible, but slow, expensive, and beyond the scope of this document.
+If we *really must* upgrade the Storage contract, then we'll need to carry out a full on-chain data migration -- which is possible, but slow, expensive, and beyond the scope of this document.
