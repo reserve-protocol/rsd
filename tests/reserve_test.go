@@ -1174,6 +1174,18 @@ func zeroAddress() common.Address {
 	return common.BigToAddress(bigInt(0))
 }
 
-func mintingTransfer(to common.Address, amount *big.Int) abi.ReserveDollarTransfer {
-	return abi.ReserveDollarTransfer{From: common.BigToAddress(bigInt(0)), To: to, Value: amount}
+func mintingTransfer(to common.Address, value *big.Int) abi.ReserveDollarTransfer {
+	return abi.ReserveDollarTransfer{
+		From:  common.BigToAddress(bigInt(0)),
+		To:    to,
+		Value: value,
+	}
+}
+
+func burningTransfer(from common.Address, value *big.Int) abi.ReserveDollarTransfer {
+	return abi.ReserveDollarTransfer{
+		From:  from,
+		To:    common.BigToAddress(bigInt(0)),
+		Value: value,
+	}
 }

@@ -351,6 +351,41 @@ func (s *MintAndBurnAdminSuite) TestCancelAll() {
 	s.Error(err, "should not be able to retrieve proposals after cancelling all")
 }
 
+func (s *MintAndBurnAdminSuite) TestBurn() {
+	recipient := s.account[2]
+	value := bigInt(1525)
+
+	// Mint some tokens.
+	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient.address(), value, true))(
+		s.proposalCreated(0, recipient.address(), value, true),
+	)
+	s.Require().NoError(s.node.(backend).AdjustTime(13 * time.Hour))
+	s.requireTx(s.adminContract.Confirm(s.adminSigner, bigInt(0), recipient.address(), value, true))(
+		s.proposalConfirmed(0, recipient.address(), value, true),
+		mintingTransfer(recipient.address(), value),
+	)
+
+	// Confirm the mint.
+	s.assertBalance(recipient.address(), value)
+
+	// Approve burning.
+	s.requireTx(s.reserve.Approve(signer(recipient), s.adminContractAddress, value))(
+		abi.ReserveDollarApproval{Holder: recipient.address(), Spender: s.adminContractAddress, Value: value},
+	)
+
+	// Burn the tokens.
+	s.requireTx(s.adminContract.Propose(s.adminSigner, recipient.address(), value, false))(
+		s.proposalCreated(1, recipient.address(), value, false),
+	)
+	s.Require().NoError(s.node.(backend).AdjustTime(13 * time.Hour))
+	s.requireTx(s.adminContract.Confirm(s.adminSigner, bigInt(1), recipient.address(), value, false))(
+		s.proposalConfirmed(1, recipient.address(), value, false),
+		burningTransfer(recipient.address(), value),
+		abi.ReserveDollarApproval{Holder: recipient.address(), Spender: s.adminContractAddress, Value: bigInt(0)},
+	)
+
+}
+
 func (s *MintAndBurnAdminSuite) proposalCreated(
 	i int, addr common.Address, value *big.Int, isMint bool,
 ) abi.MintAndBurnAdminProposalCreated {
