@@ -78,6 +78,11 @@ func (s *ReserveDollarSuite) BeforeTest(suiteName, testName string) {
 
 	deployerAddress := s.account[0].address()
 
+	s.logParsers = map[common.Address]logParser{
+		s.reserveAddress:        s.reserve,
+		s.eternalStorageAddress: s.eternalStorage,
+	}
+
 	// Make the deployment account a minter, pauser, and freezer.
 	s.requireTx(s.reserve.ChangeMinter(s.signer, deployerAddress))(
 		abi.ReserveDollarMinterChanged{NewMinter: deployerAddress},
@@ -1025,24 +1030,24 @@ func (s *ReserveDollarSuite) TestUpgrade() {
 
 	// New token should be functional.
 	assertBalance(recipient.address(), amount)
-	s.reserveAddress = newTokenAddress
+	s.logParsers[newTokenAddress] = newToken
 	s.requireTx(newToken.ChangeMinter(signer(newKey), newKey.address()))(
-		abi.ReserveDollarMinterChanged{NewMinter: newKey.address()},
+		abi.ReserveDollarV2MinterChanged{NewMinter: newKey.address()},
 	)
 	s.requireTx(newToken.ChangePauser(signer(newKey), newKey.address()))(
-		abi.ReserveDollarPauserChanged{NewPauser: newKey.address()},
+		abi.ReserveDollarV2PauserChanged{NewPauser: newKey.address()},
 	)
 	s.requireTx(newToken.Mint(signer(newKey), recipient.address(), big.NewInt(1500)))(
-		abi.ReserveDollarTransfer{From: zeroAddress(), To: recipient.address(), Value: bigInt(1500)},
+		abi.ReserveDollarV2Transfer{From: zeroAddress(), To: recipient.address(), Value: bigInt(1500)},
 	)
 	s.requireTx(newToken.Transfer(signer(recipient), s.account[3].address(), big.NewInt(10)))(
-		abi.ReserveDollarTransfer{From: recipient.address(), To: s.account[3].address(), Value: bigInt(10)},
+		abi.ReserveDollarV2Transfer{From: recipient.address(), To: s.account[3].address(), Value: bigInt(10)},
 	)
 	s.requireTx(newToken.Pause(signer(newKey)))(
-		abi.ReserveDollarPaused{Account: newKey.address()},
+		abi.ReserveDollarV2Paused{Account: newKey.address()},
 	)
 	s.requireTx(newToken.Unpause(signer(newKey)))(
-		abi.ReserveDollarUnpaused{Account: newKey.address()},
+		abi.ReserveDollarV2Unpaused{Account: newKey.address()},
 	)
 	assertBalance(recipient.address(), big.NewInt(100+1500-10))
 	assertBalance(s.account[3].address(), big.NewInt(10))
