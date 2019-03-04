@@ -64,11 +64,18 @@ func (s *ReserveDollarSuite) TearDownSuite() {
 
 // Before test runs before each test in the suite.
 func (s *ReserveDollarSuite) BeforeTest(suiteName, testName string) {
+	// Re-deploy Reserve and store a handle to the Go binding and the contract address.
 	reserveAddress, tx, reserve, err := abi.DeployReserveDollar(s.signer, s.node)
 	s.requireTx(tx, err)()
-
 	s.reserve = reserve
 	s.reserveAddress = reserveAddress
+
+	// Get the Go binding and contract address for the new ReserveDollarEternalStorage contract.
+	s.eternalStorageAddress, err = s.reserve.GetEternalStorageAddress(nil)
+	s.Require().NoError(err)
+	s.eternalStorage, err = abi.NewReserveDollarEternalStorage(s.eternalStorageAddress, s.node)
+	s.Require().NoError(err)
+
 	deployerAddress := s.account[0].address()
 
 	// Make the deployment account a minter, pauser, and freezer.
@@ -1018,6 +1025,7 @@ func (s *ReserveDollarSuite) TestUpgrade() {
 
 	// New token should be functional.
 	assertBalance(recipient.address(), amount)
+	s.reserveAddress = newTokenAddress
 	s.requireTx(newToken.ChangeMinter(signer(newKey), newKey.address()))(
 		abi.ReserveDollarMinterChanged{NewMinter: newKey.address()},
 	)
@@ -1038,6 +1046,91 @@ func (s *ReserveDollarSuite) TestUpgrade() {
 	)
 	assertBalance(recipient.address(), big.NewInt(100+1500-10))
 	assertBalance(s.account[3].address(), big.NewInt(10))
+}
+
+// Test that we can use the escape hatch in ReserveDollarEternalStorage.
+func (s *ReserveDollarSuite) TestEternalStorageEscapeHatch() {
+	assertOwner := func(expected common.Address) {
+		owner, err := s.eternalStorage.Owner(nil)
+		s.NoError(err)
+		s.Equal(expected, owner)
+	}
+
+	assertEscapeHatch := func(expected common.Address) {
+		escapeHatch, err := s.eternalStorage.EscapeHatch(nil)
+		s.NoError(err)
+		s.Equal(expected, escapeHatch)
+	}
+
+	// Check that owner and escapeHatch are initialized in the way we expect.
+	assertOwner(s.reserveAddress)
+	assertEscapeHatch(s.account[0].address())
+
+	newEscapeHatch := s.account[3]
+
+	// Change escapeHatch address and check it is what we expect.
+	s.requireTx(s.eternalStorage.TransferEscapeHatch(s.signer, newEscapeHatch.address()))(
+		abi.ReserveDollarEternalStorageEscapeHatchTransferred{
+			OldEscapeHatch: s.account[0].address(),
+			NewEscapeHatch: newEscapeHatch.address(),
+		},
+	)
+
+	// Check that escapeHatch changed and owner didn't.
+	assertOwner(s.reserveAddress)
+	assertEscapeHatch(newEscapeHatch.address())
+
+	newOwner := s.account[4]
+
+	// Change owner as escapeHatch account.
+	s.requireTx(s.eternalStorage.TransferOwnership(signer(newEscapeHatch), newOwner.address()))(
+		abi.ReserveDollarEternalStorageOwnershipTransferred{
+			OldOwner: s.reserveAddress,
+			NewOwner: newOwner.address(),
+		},
+	)
+
+	// Check that owner changed and escapeHatch didn't.
+	assertOwner(newOwner.address())
+	assertEscapeHatch(newEscapeHatch.address())
+
+	// Check that owner cannot change escapeHatch.
+	s.requireTxFails(s.eternalStorage.TransferEscapeHatch(signer(newOwner), s.account[5].address()))
+
+	// Check that escapeHatch can make the change the owner could not.
+	s.requireTx(s.eternalStorage.TransferEscapeHatch(signer(newEscapeHatch), s.account[5].address()))(
+		abi.ReserveDollarEternalStorageEscapeHatchTransferred{
+			OldEscapeHatch: newEscapeHatch.address(),
+			NewEscapeHatch: s.account[5].address(),
+		},
+	)
+}
+
+// Test that setBalance works as expected on ReserveDollarEternalStorage.
+// It is not used by the current ReserveDollar contract, but is present as a bit
+// of potential future-proofing for upgrades.
+func (s *ReserveDollarSuite) TestEternalStorageSetBalance() {
+	newOwner := s.account[1]
+	amount := bigInt(1300)
+
+	// Check that we can't call setBalance before becoming the owner.
+	s.requireTxFails(s.eternalStorage.SetBalance(signer(newOwner), newOwner.address(), amount))
+
+	// Transfer ownership of Eternal Storage to external account.
+	s.requireTx(s.eternalStorage.TransferOwnership(s.signer, newOwner.address()))(
+		abi.ReserveDollarEternalStorageOwnershipTransferred{
+			OldOwner: s.reserveAddress,
+			NewOwner: newOwner.address(),
+		},
+	)
+
+	// Check that we can now call setBalance.
+	s.requireTx(s.eternalStorage.SetBalance(signer(newOwner), newOwner.address(), amount))( /* assert zero events */ )
+
+	// Balance should have changed.
+	balance, err := s.eternalStorage.Balance(nil, newOwner.address())
+	s.NoError(err)
+	s.Equal(amount.String(), balance.String())
 }
 
 //////////////// Utility

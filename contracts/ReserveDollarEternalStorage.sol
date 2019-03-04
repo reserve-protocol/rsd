@@ -100,7 +100,6 @@ contract ReserveDollarEternalStorage {
 
     /// Set `frozenTime[who]` to `time`.
     function setFrozenTime(address who, uint256 time) external onlyOwner {
-
         frozenTime[who] = time;
     }
 }
