@@ -167,8 +167,14 @@ func (s *TestSuite) createFastNode() {
 	s.node = backend{
 		backends.NewSimulatedBackend(
 			genesisAlloc,
-			// TODO: the tests fail if this is 4e6. why?
-			8e6, // roughly same order of magnitude as mainnet
+			// Block gas limit. Needs to be more than 7e6, which is about the cost
+			// of the ReserveDollarV2 constructor. But we still want it about the
+			// same order of magnitude as mainnet.
+			//
+			// The ReserveDollar constructor is edging close to the mainnet block limit.
+			// We'll probably stay under it without any problem. If not, we can split
+			// the Eternal Storage contract deployment into a different transaction.
+			8e6,
 		),
 	}
 }
