@@ -88,7 +88,7 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Accessor for eternal storage contract address.
-    function getEternalStorageAddress() public view returns(address) {
+    function getEternalStorageAddress() external view returns(address) {
         return address(data);
     }
 
