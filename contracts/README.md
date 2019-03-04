@@ -23,7 +23,7 @@ Some consequences of this philosophy:
 - Our [Eternal Storage][] implementation is a set of concrete maps, rather than a single, dynamic key-value store as in the paradigm implementation.
 - Our system for roles is similarly concrete and non-dynamic. Role names are represented in static code, not as data.
 - We deliberately use far less contract inheritance than is fashionable.
-- We're avoiding JavaScript in our testing and deployment frameworks, even though many Ethereum tools are centered in JavaScript. We prefer Go for its quite-explicit static typing. (I _yearn_ for stronger types than that.)
+- We're avoiding JavaScript in our testing and deployment frameworks, even though many Ethereum tools are centered in JavaScript. We prefer Go, not least for its explicitness and static typing.
 
 We've aimed to keep these choices from yielding *tedious* code -- tedium makes it hard to focus, so tedium leads to mistakes. Nonetheless, in secure code, boring is better than magical.
 
@@ -31,7 +31,7 @@ We've aimed to keep these choices from yielding *tedious* code -- tedium makes i
 
 ## User-Facing Features
 
-RSVD offers the [ERC-20][] interface for compatibility with standard wallet software. So that clients can, in many cases, more efficiently work around the ERC-20 [approval API bug][API Bug], RSVD also implements `increaseAllowance` and `decreaseAllowance`.
+RSVD offers the [ERC-20][] interface for compatibility with standard wallet software. So that clients can more efficiently work around the ERC-20 [approval API bug][API Bug], RSVD also implements `increaseAllowance` and `decreaseAllowance`.
 
 [API Bug]: https://docs.google.com/document/d/1YLPtQxZu1UAvO9cZ1O2RPXBbT0mooh4DYKjA_jp-RLM/edit
 
@@ -40,36 +40,38 @@ These are the only non-view API features of the RSVD token that an Ethereum acco
 ## Administration Roles and Features
 The RSVD contacts have a number of features that should be usable only with special authorization. An account has a special authorization if a contract has that account's address assigned to some _role_.
 
-Roles in the `ReserveDollar` contract:
+### Roles in `ReserveDollar`
 
-- `owner` is the master key for the entire RSVD token. In our current plans, `owner` is securely stored off-site, and only accessed in deployment, contract upgrade, and slow system recovery operations. `owner` is authorized to:
+- `owner` is the master key for the entire RSVD token. The private key for `owner` is securely stored off-site, and only accessed in deployment, contract upgrade, and slow system recovery operations. `owner` is authorized to:
     - Change the name and ticker symbol of the Reserve Dollar. (`changeName`)
     - Change the addresses of any other roles. (`changeMinter`, `changePauser`, `changeFreezer`)
-    - Nominate a new owner. (`nominateNewOwner`).
-    - Make a different (presumably new) Reserve Dollar contract the owner of the Eternal Storage contract. (`transferEternalStorage`)
-- `nominatedOwner` is usually zero or `owner`. If `nominatedOwner` is a valid address, that nominee can become `owner` by calling `acceptOwnership()`.
+    - Nominate a new owner. (`nominateNewOwner`)
+    - Make another contract the owner of the Eternal Storage contract. (`transferEternalStorage`)
+- `nominatedOwner` is usually zero or `owner`. The `nominatedOwner` can become `owner` by calling `acceptOwnership()`.
 - `minter` is expected to be the address of a deployed `MintAndBurnAdmin` contract. `minter` is authorized to:
     - Change the address of `minter`. (`changeMinter`)
     - Mint new tokens to some address. (`mint`)
-    - Burn a user's tokens after that account has `approve`d the user to do so.
-- `pauser` is an on-site but infrequently accessed role. `pauser` is authorized to:
-    - Change the address of `pauser`
+    - Burn a user's tokens after the user set `allowance` for `minter` to do so. (`burn`)
+- `pauser` is an infrequently accessed admin role, with private key stored on-site. `pauser` is authorized to:
+    - Change the address of `pauser`. (`changePauser`)
     - Pause and unpause the token (`pause`, `unpause`), in case of [emergency](https://consensys.github.io/smart-contract-best-practices/software_engineering/#circuit-breakers-pause-contract-functionality).
-- `freezer` is an on-site but infrequently accessed role. `freezer` is authorized to:
+- `freezer` is an infrequently accessed admin role with private key stored on-site. In practice, it might be equal to `pauser`. `freezer` is authorized to:
+    - Change the address of `freezer`. (`changeFreezer`)
     - Freeze and unfreeze an account's tokens (`freeze`, `unfreeze`)
     - Burn an user's tokens after the user has been frozen for at least four weeks. (`wipe`)
 
-Roles in the `ReserveDollarEternalStorage` contract:
+### Roles in `ReserveDollarEternalStorage`
 
 - Without authorization, any user can get values.
 - `owner` is expected to be the current version of the `ReserveDollar` contract. `owner` is authorized to:
-    - Set stored values (`addBalance`, `subBalance`, `setBalance`, `setAllowed`, `setFrozenTime`)
+    - Set stored values. (`addBalance`, `subBalance`, `setBalance`, `setAllowed`, `setFrozenTime`)
     - Change the `owner` address. (`transferOwnership`)
 - `escapeHatch` is expected to be a Reserve-held external account, to be used only if setting `owner` is mishandled during an upgrade. `escapeHatch` is authorized to:
     - Change the `owner` address. (`transferOwnership`)
     - Change the `escapeHatch` address. (`transferEscapeHatch`)
 
-The only role in the `MintAndBurnAdmin` contract is `admin`. Only the `admin` account can call any functions of `MintAndBurnAdmin`. The `admin` is authorized to:
+### Roles in `MintAndBurnAdmin`
+The only role in the `MintAndBurnAdmin` contract is `admin`, and only the `admin` account can call any functions of `MintAndBurnAdmin`. The `admin` is authorized to:
 
 - Propose new minting and burning actions. (`propose`)
 - Cancel proposals before they're executed. (`cancel`)
