@@ -9,7 +9,9 @@ The Reserve Dollar is *not* the Reserve or Reserve Share token described in the 
 ## What does it do?
 The Reserve Dollar offers normal [ERC-20](http://eips.ethereum.org/EIPS/eip-20) behavior.
 
-Reserve administers this token and offers issuance and redemption to verified users. Once a user has registered with our web portal (not in this repository) and entered information necessary for KYC/AML checks, the user will be eligible to buy and sell RSVD for fiat currency, directly from Reserve. To this end, Reserve controls external admin accounts. The admin accounts can mint and burn tokens to represent the on-chain side of these transactions. Various admin accounts can also freeze accounts, wipe long-frozen accounts, pause the entire contract, upgrade the contract itself, and update admin addresses.
+Reserve administers this token and offers issuance and redemption to verified users. Once a user has registered with our web portal (not in this repository) and entered information necessary for KYC/AML checks, the user will be eligible to buy and sell RSVD for fiat currency. When a user buys RSVD for fiat through our system, we mint RSVD to give them; when a user sells RSVD for fiat through our system, we burn those RSVD.
+
+To this end, Reserve controls external admin accounts. The admin accounts can mint and burn tokens to represent the on-chain side of these transactions. Various admin accounts can also freeze accounts, wipe long-frozen accounts, pause the token, upgrade the token, and update admin addresses.
 
 ## How does it fit together?
 There are three main smart contracts in `contracts/`: `ReserveDollar`, `ReserveDollarEternalStorage`, and `MintAndBurnAdmin`.
@@ -18,7 +20,7 @@ There are three main smart contracts in `contracts/`: `ReserveDollar`, `ReserveD
 * `ReserveDollarEternalStorage` is a static implementation of the [Eternal Storage][] pattern for `ReserveDollar` Any non-constant-sized data for `ReserveDollar` is stored there. However, because the token's storage is relatively simple, and the dynamic form of the EternalStorage pattern introduces difficulties in analysis, `ReserveDollarEternalStorage` provides accessors for _specific_ maps -- `balance`, `allowed`, and `frozenTime`.
 * `MintAndBurnAdmin` is intended to hold the `minter` role for `ReserveDollar`. We use this to give ourselves time to respond and recover in case our operational keys are stolen.
 
-[EternalStorage]: https://fravoll.github.io/solidity-patterns/eternal_storage.html
+[Eternal Storage]: https://fravoll.github.io/solidity-patterns/eternal_storage.html
 
 # Environment Setup
 
@@ -49,7 +51,9 @@ To build and test everything in our configuration, your development environment 
 
 ## Dockerized environment
 
-There is also a dockerized version of our development environment. If you have docker set up, you can open it with `make run-dev-container`. It's not intended to handle all development workflows, but you should be able to successfully run `make test` in it, and use it to troubleshoot your host environment if necessary. (That container is built from the Dockerfile in the root of this repository.)
+There is also a dockerized version of our development environment on [Docker Hub][]. If you have docker set up, you can open it with `make run-dev-container`. It's not intended to handle all development workflows, but you should be able to successfully run `make test` in it, and use it to troubleshoot your host environment if necessary. (That container is built from the Dockerfile in the root of this repository.)
+
+[Docker Hub]: https://cloud.docker.com/u/reserveprotocol/repository/docker/reserveprotocol/env
 
 # Building and Testing
 
@@ -94,7 +98,9 @@ The command `make run-devnet` sets up a local `geth` node specialized for testin
 [go-ethereum]: https://github.com/ethereum/go-ethereum/wiki/geth
 [ethlint]: https://www.npmjs.com/package/ethlint
 
-## Directory Layout Highlights
+## Directory Layout
+
+### Highlights
 - `contracts/`: The Reserve Dollar smart contracts
     - `ReserveDollar.sol`: The main token implementation contract.
     -  `ReserveDollarEternalStorage.sol`: Static implementation of the [Eternal Storage][] pattern for `ReserveDollar`
@@ -103,15 +109,12 @@ The command `make run-devnet` sets up a local `geth` node specialized for testin
     - `zepplin/SafeMath.sol`: The OpenZepplin SafeMath library.
 - `tests/`: Unit tests for the Reserve Dollar smart contracts
 - `cmd/poke/` A CLI for interacting with the Reserve Dollar smart contract.
-
-
 - `soltools/`: Go-to-JavaScript bridge, to wrap 0x's solidity tools.
-- `artifacts/`: build destination for smart contracts
-- `abi/`: build directory Go bindings for the smart contracts get built.
 
-
+### The Rest
+- `artifacts/`: Build destination for smart contracts
+- `abi/`: Build directory Go bindings for the smart contracts get built.
 - `README.md`: You're reading it.
 - `Makefile`: Entry points for building and testing, as [above](#Makefile).
 - `Dockerfile`: Dockerfile for the dockerized dev environment
 - ... and a handful of other source-tree configuration files
-
