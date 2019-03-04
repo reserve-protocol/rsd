@@ -64,10 +64,10 @@ With an environment set up as above,
 - To build and run unit tests: `make test`
 - To build smart contracts and their Go bindings: `make abi/bindings`
 - To compute coverage:
-    - In a separate long-lived terminal, `make run-devnet`
+    - In a separate long-lived terminal, `make run-geth`
     - `make coverage` (You will get a lot of warnings saying "We'll just skip that trace", even things are working right.)
 - To deploy and interact with the smart contracts
-    - In a separate long-lived terminal, `make run-devnet`
+    - In a separate long-lived terminal, `make run-geth`
     - `make poke`
     - `poke --help`
     - `$(poke deploy)`
@@ -84,15 +84,15 @@ The root Makefile provides entry points for building and testing:
 
 - `make fmt`: Use [ethlint][] to lint and format smart contracts.
 - `make test`: Run tests for the smart contracts
-- `make coverage`: Compute test coverage (where possible) for the smart contracts. Note that it has a few obvious false negatives, like the ReserveDollar constructor, interface definitions, and the `_;` line in modifiers. Needs a local `geth` node listening at `localhost:8545`; see `make run-devnet`.
-- `make poke`: Build and install the `poke` CLI, for deploying and exercising with the Reserve Dollar smart contracts. `poke` needs a local `geth` node listening at `localhost:8545`; see `make run-devnet`.
-- `make run-devnet`: Run a local ethereum node suitable for testing and coverage.
+- `make coverage`: Compute test coverage (where possible) for the smart contracts. Note that it has a few obvious false negatives, like the ReserveDollar constructor, interface definitions, and the `_;` line in modifiers. Needs a local `geth` node listening at `localhost:8545`; see `make run-geth`.
+- `make poke`: Build and install the `poke` CLI, for deploying and exercising with the Reserve Dollar smart contracts. `poke` needs a local `geth` node listening at `localhost:8545`; see `make run-geth`.
+- `make run-geth`: Run a local ethereum node suitable for testing and coverage.
 - `make run-dev-container`: Open dockerized development environment.
 
-## More on `make run-devnet`
+## More on `make run-geth`
 Some of our tools -- `poke` and `make coverage` -- expect to interact with a local [geth][go-ethereum] node at `http://localhost:8545`. Notably `make test` does _not_ require this; it uses a faster, in-memory EVM implementation.
 
-The command `make run-devnet` sets up a local `geth` node specialized for testing. `make run-devnet` will run the [`0xorg/devnet` container][devnet] and have it listen on port 8545. This command produces lots of live output to stdout, which is frequently useful. We recommend either running it in its own terminal, or at least piping its output somewhere so that you can `tail -f` it.
+The command `make run-geth` sets up a local `geth` node specialized for testing. `make run-geth` will run the [`0xorg/devnet` container][devnet] and have it listen on port 8545. This command produces lots of live output to stdout, which is frequently useful. We recommend either running it in its own terminal, or at least piping its output somewhere so that you can `tail -f` it.
 
 [devnet]: https://github.com/0xProject/0x-monorepo/tree/development/packages/devnet
 [go-ethereum]: https://github.com/ethereum/go-ethereum/wiki/geth

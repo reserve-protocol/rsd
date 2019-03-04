@@ -29,5 +29,5 @@ run-dev-container:
 		--mount type=bind,source="$(REPO_DIR)",target=/reserve-dollar \
 		reserveprotocol/env
 
-run-devnet:
+run-geth:
 	docker run -it --rm -p 8545:8501 0xorg/devnet

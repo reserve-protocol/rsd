@@ -128,7 +128,7 @@ func (s *TestSuite) assertTotalSupply(amount *big.Int) {
 func (s *TestSuite) createSlowCoverageNode() {
 	fmt.Fprintln(os.Stderr, "\nA local geth node must be running for coverage to work.")
 	fmt.Fprintln(os.Stderr, "If one is not already running, start one in a new terminal with:")
-	fmt.Fprintln(os.Stderr, "\n\tmake run-devnet")
+	fmt.Fprintln(os.Stderr, "\n\tmake run-geth")
 
 	var err error
 	s.node, err = soltools.NewBackend("http://localhost:8545")
