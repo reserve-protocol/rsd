@@ -65,13 +65,8 @@ func main() {
 
 		// Generate event bindings.
 		//
-		// func ParseReserveDollarLog(log *types.Log) (interface{}, error) {
-		//	...
-		// }
-		//
-		// func (f ReserveDollarFrozen) String() string {
-		//	return fmt.Sprintf("ReserveDollarFrozen(%v, %v)", f.Freezer.Hex(), f.Account.Hex())
-		// }
+		// We generate a String() function for each event and a
+		// Parse<ContractName>Log(*types.Log) function for each contract.
 		buf := new(bytes.Buffer)
 		parsedABI, err := abi.JSON(bytes.NewReader(compiled.CompilerOutput.ABI))
 		check(err, "parsing ABI JSON")
