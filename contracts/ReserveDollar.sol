@@ -142,14 +142,15 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Set `owner` to 0.
-    /// Only do this if you're abandoning this contract, e.g., for an upgrade.
+    /// Only do this to deliberately lock in the current permissions.
     function renounceOwnership() external only(owner) {
         owner = address(0);
         emit OwnerChanged(owner);
     }
 
     /// Make a different address own the EternalStorage contract.
-    /// Only do this if you're abandoning this contract, e.g., for an upgrade.
+    /// This will break this contract, so only do it if you're
+    /// abandoning this contract, e.g., for an upgrade.
     function transferEternalStorage(address newOwner) external only(owner) {
         data.transferOwnership(newOwner);
     }
