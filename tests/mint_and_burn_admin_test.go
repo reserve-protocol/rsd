@@ -1,9 +1,7 @@
 package tests
 
 import (
-	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
@@ -14,7 +12,6 @@ import (
 	ethabi "github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/compiler"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/suite"
 
@@ -66,25 +63,22 @@ func (s *MintAndBurnAdminSuite) SetupSuite() {
 
 	// Create a utility contract to get the current block time.
 	{
-		compiled, err := compiler.CompileSolidityString("", `
+		// Bytecode and ABI from compiling this Solidity file offline:
+		/*
 			pragma solidity ^0.5.4;
 			contract Utility {
 				function time() public view returns(uint256) {
 					return now;
 				}
 			}
-		`)
+		*/
+		bytecode := "0x6080604052348015600f57600080fd5b5060918061001e6000396000f3fe6080604052348015600f57600080fd5b50600436106044577c0100000000000000000000000000000000000000000000000000000000600035046316ada54781146049575b600080fd5b604f6061565b60408051918252519081900360200190f35b429056fea165627a7a723058205524d6a0c4d80ea5535c2ea64615c2619a21518e242cb929275cbd678b04468f0029"
+		utilABI, err := ethabi.JSON(strings.NewReader(`
+		[{"constant":true,"inputs":[],"name":"time","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}]
+		`))
 		s.Require().NoError(err)
 
-		contract := compiled["<stdin>:Utility"]
-
-		marshaled, err := json.Marshal(contract.Info.AbiDefinition)
-		s.Require().NoError(err)
-
-		utilABI, err := ethabi.JSON(bytes.NewReader(marshaled))
-		s.Require().NoError(err)
-
-		code, err := hex.DecodeString(strings.TrimPrefix(contract.Code, "0x"))
+		code, err := hex.DecodeString(strings.TrimPrefix(bytecode, "0x"))
 		s.Require().NoError(err)
 
 		var tx *types.Transaction
