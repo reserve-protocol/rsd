@@ -17,7 +17,7 @@ To this end, Reserve controls external admin accounts. The admin accounts can mi
 There are three main smart contracts in `contracts/`: `ReserveDollar`, `ReserveDollarEternalStorage`, and `MintAndBurnAdmin`.
 
 * `ReserveDollar` is the main token implementation. It provides ERC-20 and administration interfaces.
-* `ReserveDollarEternalStorage` is a static implementation of the [Eternal Storage][] pattern for `ReserveDollar` Any non-constant-sized data for `ReserveDollar` is stored there. However, because the token's storage is relatively simple, and the dynamic form of the EternalStorage pattern introduces difficulties in analysis, `ReserveDollarEternalStorage` provides accessors for _specific_ maps -- `balance`, `allowed`, and `frozenTime`.
+* `ReserveDollarEternalStorage` is a static implementation of the [Eternal Storage][] pattern for `ReserveDollar`. Any non-constant-sized data for `ReserveDollar` is stored there. However, because the token's storage is relatively simple, and the dynamic form of the EternalStorage pattern introduces difficulties in analysis, `ReserveDollarEternalStorage` provides accessors for _specific_ maps -- `balance`, `allowed`, and `frozenTime`.
 * `MintAndBurnAdmin` is intended to hold the `minter` role for `ReserveDollar`. We use this to give ourselves time to respond and recover in case our operational keys are stolen.
 
 [Eternal Storage]: https://fravoll.github.io/solidity-patterns/eternal_storage.html
