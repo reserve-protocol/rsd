@@ -148,14 +148,14 @@ func main() {
 			},
 		},
 		{
-			"ERC Approval Bug Mitigation Commands",
+			"ERC-20-Approval-Bug Mitigation Commands",
 			[]*cobra.Command{
 				increaseAllowanceCmd,
 				decreaseAllowanceCmd,
 			},
 		},
 		{
-			"Read Admin Role Commands",
+			"Admin Role Reading Commands",
 			[]*cobra.Command{
 				ownerCmd,
 				minterCmd,
@@ -165,7 +165,7 @@ func main() {
 			},
 		},
 		{
-			"Change Admin Role Commands",
+			"Admin Role Changing Commands",
 			[]*cobra.Command{
 				changeMinterCmd,
 				changePauserCmd,
@@ -264,6 +264,10 @@ func getReserveDollar() *abi.ReserveDollar {
 	return rsvd
 }
 
+// TODO (issue #13): It'd be cleaner for the addresses currently named
+// "@0" through "@9" on the command line to just be name "0" through
+// "9" -- and then this setting (and the later parseKey) need not go
+// through os.Getenv.
 func init() {
 	for i, key := range defaultKeys {
 		envVar := "RSVD_" + strconv.Itoa(i)
@@ -311,6 +315,7 @@ func parseAddress(s string) common.Address {
 	return common.HexToAddress(s)
 }
 
+// parseAttoTokens reads a decimal-formatted number of tokens and returns that number time 1e18.
 func parseAttoTokens(s string) *big.Int {
 	d, err := decimal.NewFromString(s)
 	if err != nil {
@@ -320,7 +325,7 @@ func parseAttoTokens(s string) *big.Int {
 	return truncateDecimal(d.Shift(18))
 }
 
-// truncateDecimal truncates d to an integer and returns it as an *Int.
+// truncateDecimal truncates d to an integer and returns it as a *big.Int.
 func truncateDecimal(d decimal.Decimal) *big.Int {
 	coeff := d.Coefficient()
 	exp := d.Exponent()
@@ -333,6 +338,7 @@ func truncateDecimal(d decimal.Decimal) *big.Int {
 	return coeff.Div(coeff, z.Exp(big.NewInt(10), big.NewInt(int64(-exp)), nil))
 }
 
+// toDisplay is the inverse of parseAttoTokens
 func toDisplay(i *big.Int) string {
 	return decimal.NewFromBigInt(i, -18).String()
 }
@@ -345,6 +351,7 @@ func keyToHex(key *ecdsa.PrivateKey) string {
 	return hex.EncodeToString(crypto.FromECDSA(key))
 }
 
+// log logs the result of a mutator txn to stdout, including that txn's events.
 func log(name string, tx *types.Transaction, err error) {
 	check(err, name+" failed")
 	receipt, err := bind.WaitMined(context.Background(), getNode(), tx)
@@ -407,7 +414,7 @@ var accountCmd = &cobra.Command{
 }
 
 var balanceOfCmd = &cobra.Command{
-	Use:   "balanceOf <addressi holder>",
+	Use:   "balanceOf <address holder>",
 	Short: "Get an account's balance of Reserve Dollars.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
