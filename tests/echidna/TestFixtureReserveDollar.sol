@@ -28,5 +28,9 @@ contract TestFixtureReserveDollar is ReserveDollar {
         data.addBalance(account, value);
         emit Transfer(address(0), account, value);
     }
-    
+
+    function testFixturePause() internal only(pauser) {
+        paused = true;
+        emit Paused(pauser);
+    }
 }

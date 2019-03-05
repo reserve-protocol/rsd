@@ -1,6 +1,5 @@
 pragma solidity ^0.5.4;
 
-import "ReserveDollar.sol";
 import "TestFixtureReserveDollar.sol";
 
 // Test that 3 users that can transfer between themselves only cannot increase
