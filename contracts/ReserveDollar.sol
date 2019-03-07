@@ -218,6 +218,15 @@ contract ReserveDollar is IERC20 {
     }
 
 
+    // ==== Expose frozenTime from Eternal Storage ====
+
+
+    /// @return the time at which `account` was frozen, or zero if it is not frozen.
+    function frozenTime(address account) external view returns (uint256) {
+        return data.frozenTime(account);
+    }
+
+
     // ==== Token transfers, allowances, minting, and burning ====
 
 

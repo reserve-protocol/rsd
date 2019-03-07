@@ -1196,6 +1196,28 @@ func (s *ReserveDollarSuite) TestNoWipeWhilePaused() {
 	)
 }
 
+func (s *ReserveDollarSuite) TestFrozenTime() {
+	target := common.BigToAddress(bigInt(1234))
+
+	// FrozenTime should be zero for unfrozen account.
+	frozenTime, err := s.reserve.FrozenTime(nil, target)
+	s.NoError(err)
+	s.Equal("0", frozenTime.String())
+
+	// Freeze target.
+	s.requireTx(s.reserve.Freeze(s.signer, target))(
+		abi.ReserveDollarFrozen{
+			Freezer: s.account[0].address(),
+			Account: target,
+		},
+	)
+
+	// FrozenTime should now be nonzero.
+	frozenTime, err = s.reserve.FrozenTime(nil, target)
+	s.NoError(err)
+	s.NotEqual("0", frozenTime.String())
+}
+
 //////////////// Utility
 
 func maxUint256() *big.Int {
