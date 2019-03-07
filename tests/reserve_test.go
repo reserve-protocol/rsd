@@ -1145,6 +1145,57 @@ func (s *ReserveDollarSuite) TestEternalStorageSetBalance() {
 	s.Equal(amount.String(), balance.String())
 }
 
+func (s *ReserveDollarSuite) TestNoWipeWhilePaused() {
+	simulatedBackend, ok := s.node.(backend)
+	if !ok {
+		s.T().Skip("can't simulate advancing time in coverage mode")
+	}
+	target := common.BigToAddress(bigInt(2))
+	amount := bigInt(10000)
+
+	// Mint funds to target.
+	s.requireTx(s.reserve.Mint(s.signer, target, amount))(
+		mintingTransfer(target, amount),
+	)
+
+	// Freeze target.
+	s.requireTx(s.reserve.Freeze(s.signer, target))(
+		abi.ReserveDollarFrozen{
+			Freezer: s.account[0].address(),
+			Account: target,
+		},
+	)
+
+	// Advance time 40 days.
+	simulatedBackend.AdjustTime(24 * time.Hour * 40)
+
+	// Pause the contract.
+	s.requireTx(s.reserve.Pause(s.signer))(
+		abi.ReserveDollarPaused{
+			Account: s.account[0].address(),
+		},
+	)
+
+	// Should not be able to wipe the account while paused.
+	s.requireTxFails(s.reserve.Wipe(s.signer, target))
+
+	// Unpause the contract.
+	s.requireTx(s.reserve.Unpause(s.signer))(
+		abi.ReserveDollarUnpaused{
+			Account: s.account[0].address(),
+		},
+	)
+
+	// Should now be able to wipe.
+	s.requireTx(s.reserve.Wipe(s.signer, target))(
+		burningTransfer(target, amount),
+		abi.ReserveDollarWiped{
+			Freezer: s.account[0].address(),
+			Wiped:   target,
+		},
+	)
+}
+
 //////////////// Utility
 
 func maxUint256() *big.Int {

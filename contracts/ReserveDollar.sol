@@ -208,7 +208,7 @@ contract ReserveDollar is IERC20 {
     }
 
     /// Burn the balance of an account that has been frozen for at least 4 weeks.
-    function wipe(address account) external only(freezer) {
+    function wipe(address account) external notPaused only(freezer) {
         require(data.frozenTime(account) > 0, "cannot wipe unfrozen account");
         // See commentary above about using block.timestamp.
         // solium-disable-next-line security/no-block-members
