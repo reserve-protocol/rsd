@@ -22,7 +22,8 @@ contract MintAndBurnAdmin {
     uint256 public constant delay = 12 hours;
     address public admin;
 
-    Proposal[] public proposals;
+    mapping(uint256 => Proposal) public proposals;
+    uint256 public nextProposal;
 
     // EVENTS
 
@@ -52,15 +53,17 @@ contract MintAndBurnAdmin {
         // solium-disable-next-line security/no-block-members
         uint256 delayUntil = now + delay;
 
-        proposals.push(Proposal({
+        proposals[nextProposal] = Proposal({
             addr: addr,
             value: value,
             isMint: isMint,
             time: delayUntil,
             closed: false
-        }));
+        });
 
-        emit ProposalCreated(proposals.length - 1, addr, value, isMint, delayUntil);
+        emit ProposalCreated(nextProposal, addr, value, isMint, delayUntil);
+
+        nextProposal++;
     }
 
     /// Cancel a proposed mint or burn.
@@ -75,7 +78,7 @@ contract MintAndBurnAdmin {
 
     /// Cancel all proposals.
     function cancelAll() external onlyAdmin {
-        proposals.length = 0;
+        nextProposal = 0;
         emit AllProposalsCancelled();
     }
 
@@ -102,6 +105,7 @@ contract MintAndBurnAdmin {
 
     /// Throw unless the given proposal exists and matches `addr`, `value`, and `isMint`.
     function requireMatchingOpenProposal(uint256 index, address addr, uint256 value, bool isMint) private view {
+        require(index < nextProposal, "no such proposal");
         require(!proposals[index].closed, "proposal already closed");
 
         // Slither reports "dangerous strict equality" for each of these, but it's OK.

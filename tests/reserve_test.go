@@ -1244,6 +1244,10 @@ func bigInt(n uint32) *big.Int {
 	return big.NewInt(int64(n))
 }
 
+func intAddress(i uint32) common.Address {
+	return common.BigToAddress(bigInt(i))
+}
+
 func zeroAddress() common.Address {
 	return common.BigToAddress(bigInt(0))
 }

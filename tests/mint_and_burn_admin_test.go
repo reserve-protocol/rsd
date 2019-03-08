@@ -191,9 +191,10 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 	amount := big.NewInt(100)
 	futureAmount := big.NewInt(1000)
 
-	// Retrieving the 0th proposal should fail when no proposals have been created yet.
-	_, err := s.adminContract.Proposals(nil, bigInt(0))
-	s.Error(err, "there should be no proposals on a newly-initialized MintAndBurnAdmin")
+	// nextProposal should be 0 when no proposals have been created yet.
+	nextProposal, err := s.adminContract.NextProposal(nil)
+	s.NoError(err)
+	s.Equal("0", nextProposal.String())
 
 	// Trying to propose as someone other than the admin signer should fail.
 	s.requireTxFails(s.adminContract.Propose(s.signer, recipient, amount, true))
@@ -203,9 +204,10 @@ func (s *MintAndBurnAdminSuite) TestPropose() {
 		s.proposalCreated(0, recipient, amount, true),
 	)
 
-	// Retrieving the 0th proposal should now work.
-	_, err = s.adminContract.Proposals(nil, bigInt(0))
+	// nextProposal should now be 1.
+	nextProposal, err = s.adminContract.NextProposal(nil)
 	s.NoError(err)
+	s.Equal("1", nextProposal.String())
 
 	// Advance time by 12 hours.
 	s.Require().NoError(s.node.(backend).AdjustTime(12 * time.Hour))
@@ -325,14 +327,52 @@ func (s *MintAndBurnAdminSuite) TestConfirm() {
 }
 
 func (s *MintAndBurnAdminSuite) TestCancelAll() {
+	initialTime := s.BlockTime()
+
 	// Create several proposals.
 	for i := 0; i < 5; i++ {
-		recipient := common.BigToAddress(bigInt(uint32(i)))
+		recipient := common.BigToAddress(bigInt(uint32(i + 1)))
 		value := bigInt(uint32((i + 1) * 100))
 		s.requireTx(s.adminContract.Propose(s.adminSigner, recipient, value, i%2 == 0))(
 			s.proposalCreated(i, recipient, value, i%2 == 0),
 		)
 	}
+
+	// Advance time to allow confirming proposals.
+	s.NoError(s.node.(backend).AdjustTime(13 * time.Hour))
+
+	// Confirm the first proposal.
+	s.requireTx(
+		s.adminContract.Confirm(
+			s.adminSigner,
+			bigInt(0),
+			intAddress(1),
+			bigInt(100),
+			true,
+		),
+	)(
+		s.proposalConfirmed(0, intAddress(1), bigInt(100), true),
+		mintingTransfer(intAddress(1), bigInt(100)),
+	)
+
+	type Proposal struct {
+		Addr   common.Address
+		Value  *big.Int
+		IsMint bool
+		Time   *big.Int
+		Closed bool
+	}
+
+	// Retrieve the first proposal. We'll check that the first proposal is different after cancelAll.
+	proposal, err := s.adminContract.Proposals(nil, bigInt(0))
+	s.NoError(err)
+	s.EqualValues(Proposal{
+		Addr:   intAddress(1),
+		Value:  bigInt(100),
+		IsMint: true,
+		Time:   new(big.Int).Add(initialTime, bigInt(12*60*60+10 /* 12 hours plus sim block time */)),
+		Closed: true,
+	}, proposal)
 
 	// Confirm that CancelAll cannot be called by someone unauthorized.
 	s.requireTxFails(s.adminContract.CancelAll(signer(s.account[2])))
@@ -342,9 +382,44 @@ func (s *MintAndBurnAdminSuite) TestCancelAll() {
 		abi.MintAndBurnAdminAllProposalsCancelled{},
 	)
 
-	// Confirm that we can no longer retrieve the 0th proposal.
-	_, err := s.adminContract.Proposals(nil, bigInt(0))
-	s.Error(err, "should not be able to retrieve proposals after cancelling all")
+	// Confirm that nextProposal has been reset.
+	nextProposal, err := s.adminContract.NextProposal(nil)
+	s.NoError(err)
+	s.Equal("0", nextProposal.String())
+
+	// Ensure that we cannot confirm previous proposals.
+	s.requireTxFails(
+		s.adminContract.Confirm(
+			s.adminSigner,
+			bigInt(2),
+			intAddress(3),
+			bigInt(300),
+			true,
+		),
+	)
+
+	// Confirm that creating a new proposal overwrites the old proposal at the same index.
+	s.NoError(s.node.(backend).AdjustTime(1 * time.Hour)) // different time
+	newRecipient := common.BigToAddress(bigInt(100))      // different from the 0th proposal in the loop above.
+	newValue := bigInt(2)                                 // different from the 0th proposal in the loop above
+	s.requireTx(s.adminContract.Propose(s.adminSigner, newRecipient, newValue, false))(
+		s.proposalCreated(0, newRecipient, newValue, false),
+	)
+
+	// Sanity check that BlockTime changed.
+	newTime := s.BlockTime()
+	s.NotEqual(newTime, proposal.Time)
+
+	// Check that the first proposal now has all new fields.
+	proposal, err = s.adminContract.Proposals(nil, bigInt(0))
+	s.NoError(err)
+	s.EqualValues(Proposal{
+		Addr:   newRecipient,
+		Value:  newValue,
+		IsMint: false,
+		Time:   new(big.Int).Add(newTime, bigInt(12*60*60 /* 12 hours */)),
+		Closed: false,
+	}, proposal)
 }
 
 func (s *MintAndBurnAdminSuite) TestBurn() {
