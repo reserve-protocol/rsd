@@ -3,6 +3,7 @@ module github.com/reserve-protocol/reserve-dollar
 go 1.12
 
 require (
+	github.com/BurntSushi/xdg v0.0.0-20130804141135-e80d3446fea1
 	github.com/allegro/bigcache v1.2.0 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20190219163901-728bce664cf5 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect

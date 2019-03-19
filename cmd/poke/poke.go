@@ -10,15 +10,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/BurntSushi/xdg"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/reserve-protocol/reserve-dollar/abi"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/reserve-protocol/reserve-dollar/abi"
 )
 
 var defaultKeys = []string{
@@ -215,13 +217,31 @@ func main() {
 		defaultKeys[0],
 		"Hex-encoded private key to sign transactions with. Defaults to the 0th address in the 0x mnemonic.",
 	)
-	root.PersistentFlags().StringP(
-		"address",
-		"A",
+	root.PersistentFlags().String(
+		"tokenAddress",
 		"",
 		"Address of a deployed copy of the Reserve Dollar contract.",
 	)
+	root.PersistentFlags().StringP(
+		"node",
+		"n",
+		"http://localhost:8545",
+		"URL of an Ethereum node",
+	)
 	viper.BindPFlags(root.PersistentFlags())
+
+	// Read config file.
+	{
+		cfgFile, err := xdg.Paths{XDGSuffix: "reserve"}.ConfigFile("poke.toml")
+		if err == nil {
+			viper.SetConfigFile(cfgFile)
+			err = viper.ReadInConfig()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Failed to read config:", err)
+				os.Exit(1)
+			}
+		}
+	}
 
 	err := root.Execute()
 	if err != nil {
@@ -235,8 +255,9 @@ var client *ethclient.Client
 func getNode() *ethclient.Client {
 	if client == nil {
 		var err error
-		client, err = ethclient.Dial("http://localhost:8545")
-		check(err, "Failed to connect to Ethereum node (is there a node running at localhost:8545?)")
+		nodeAddr := viper.GetString("node")
+		client, err = ethclient.Dial(nodeAddr)
+		check(err, fmt.Sprintf("Failed to connect to Ethereum node (is there a node running at %q?)", nodeAddr))
 	}
 	return client
 }
@@ -249,11 +270,11 @@ var rsvd *abi.ReserveDollar
 
 func getReserveDollar() *abi.ReserveDollar {
 	if rsvd == nil {
-		address := viper.GetString("address")
+		address := viper.GetString("tokenAddress")
 		if address == "" {
 			fmt.Fprintln(os.Stderr, "No address specified for the Reserve Dollar contract.")
-			fmt.Fprintln(os.Stderr, "To specify an address, set the --address flag or the RSVD_ADDRESS environment variable.")
-			fmt.Fprintln(os.Stderr, "To deploy a new contract and set the RSVD_ADDRESS in your current shell in a single step, run:")
+			fmt.Fprintln(os.Stderr, "To specify an address, set the --address flag or the RSVD_TOKENADDRESS environment variable.")
+			fmt.Fprintln(os.Stderr, "To deploy a new contract and set the RSVD_TOKENADDRESS in your current shell in a single step, run:")
 			fmt.Fprintln(os.Stderr, "\t$(poke deploy)")
 			os.Exit(1)
 		}
@@ -389,7 +410,7 @@ var deployCmd = &cobra.Command{
 
 This command also outputs the newly-deployed address in the format:
 
-	export RSVD_ADDRESS=<new address>
+	export RSVD_TOKENADDRESS=<new address>
 
 Which enables using the following pattern to conveniently deploy a new
 contract and use that contract address in subsequent commands:
@@ -400,7 +421,7 @@ contract and use that contract address in subsequent commands:
 	Run: func(cmd *cobra.Command, args []string) {
 		addr, _, _, err := abi.DeployReserveDollar(getSigner(), getNode())
 		check(err, "Failed to deploy Reserve Dollar")
-		fmt.Println("export RSVD_ADDRESS=" + addr.Hex())
+		fmt.Println("export RSVD_TOKENADDRESS=" + addr.Hex())
 	},
 }
 
