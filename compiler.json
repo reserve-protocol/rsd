@@ -3,6 +3,7 @@
   "artifactsDir": "artifacts",
   "contracts": "*",
   "compilerSettings": {
+    "evmVersion": "byzantium",
     "outputSelection": {
       "*": {
         "*": [

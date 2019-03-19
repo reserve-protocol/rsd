@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
@@ -11,7 +12,9 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/xdg"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/usbwallet"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -236,6 +239,8 @@ func main() {
 	)
 	viper.BindPFlags(root.PersistentFlags())
 
+	defer runExitFuncs()
+
 	// Read config file.
 	{
 		cfgFile, err := xdg.Paths{XDGSuffix: "reserve"}.ConfigFile("poke.toml")
@@ -244,7 +249,7 @@ func main() {
 			err = viper.ReadInConfig()
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Failed to read config:", err)
-				os.Exit(1)
+				exit(1)
 			}
 		}
 	}
@@ -252,8 +257,35 @@ func main() {
 	err := root.Execute()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		exit(1)
 	}
+}
+
+var exitFuncs []func()
+
+func atExit(f func()) {
+	exitFuncs = append(exitFuncs, f)
+}
+
+func runExitFuncs() {
+	for _, f := range exitFuncs {
+		f()
+	}
+}
+
+func exit(code int) {
+	runExitFuncs()
+	os.Exit(code)
+}
+
+func fatal(a ...interface{}) {
+	fmt.Fprintln(os.Stderr, a...)
+	exit(1)
+}
+
+func fatalf(format string, a ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, a...)
+	exit(1)
 }
 
 var client *ethclient.Client
@@ -268,8 +300,108 @@ func getNode() *ethclient.Client {
 	return client
 }
 
+func openHardwareWallet() (accounts.Wallet, accounts.Account) {
+	// Open hardware wallet.
+	var wallet accounts.Wallet
+	{
+		// Check for connected Ledgers and Trezors.
+		ledgerHub, err := usbwallet.NewLedgerHub()
+		check(err, "calling usbwallet.NewLedgerHub()")
+		trezorHub, err := usbwallet.NewTrezorHub()
+		check(err, "calling usbwallet.NewTrezorHub()")
+
+		// Collect them into a single list.
+		wallets := accounts.NewManager(ledgerHub, trezorHub).Wallets()
+
+		// Don't proceed unless there is exactly one hardware wallet available.
+		if len(wallets) == 0 {
+			fatal("No hardware wallets found. Is a hardware wallet plugged in? If it's a Ledger, is it unlocked?")
+		}
+		if len(wallets) > 1 {
+			fatalf("%v hardware wallets found, I don't know which to use", len(wallets))
+		}
+
+		wallet = wallets[0]
+
+		// "Open" the wallet.
+		// This exchanges initial handshake messages with the wallet.
+		// On a Trezor, this may require PIN entry.
+		err = wallet.Open("")
+		if err == usbwallet.ErrTrezorPINNeeded {
+			fmt.Println("enter PIN (following scramble on the Trezor display)")
+			scanner := bufio.NewScanner(os.Stdin)
+			ok, pin, pinErr := scanner.Scan(), scanner.Text(), scanner.Err()
+			if !ok {
+				fatal("user cancelled pin entry")
+			}
+			check(pinErr, "getting PIN input")
+			err = wallet.Open(pin)
+		}
+		check(err, "opening hardware wallet")
+
+		// Notify the wallet when the program exits.
+		atExit(func() {
+			wallet.Close()
+		})
+	}
+
+	// Open account.
+	var account accounts.Account
+	{
+		var (
+			hardened uint32 = 1 << 31
+			err      error
+		)
+		account, err = wallet.Derive(
+			// Standard Ethereum derivation path: m/44'/60'/0'/0 , with index 0
+			// See eg https://ethereum.stackexchange.com/a/19061 for more information about derivation paths
+			// Note that we don't really need to use the standard path here, but it's a fine default.
+			[]uint32{
+				44 | hardened,
+				60 | hardened,
+				0 | hardened,
+				0,
+				0,
+			},
+			true, // "pin" this account -- needed for the wallet object to recognize it later in "wallet.SignTx"
+		)
+		if err != nil && err.Error() == "reply lacks public key entry" {
+			fatal("Failed to get public key. Is the Ethereum app open on the Ledger?")
+		}
+		check(err, "deriving account")
+	}
+
+	return wallet, account
+}
+
 func getSigner() *bind.TransactOpts {
-	return bind.NewKeyedTransactor(parseKey(viper.GetString("from")))
+	from := viper.GetString("from")
+	if from != "hardware" {
+		return bind.NewKeyedTransactor(parseKey(from))
+	}
+
+	netID, err := getNode().NetworkID(context.Background())
+	check(err, "Failed to get Ethereum network id")
+
+	wallet, account := openHardwareWallet()
+	return &bind.TransactOpts{
+		From: account.Address,
+		Signer: func(
+			protocolSigner types.Signer,
+			from common.Address,
+			tx *types.Transaction,
+		) (*types.Transaction, error) {
+			if from != account.Address {
+				fatalf(
+					"unexpected `from` address. from=%v account=%v",
+					from.Hex(),
+					account.Address.Hex(),
+				)
+			}
+			fmt.Println("Waiting for you to confirm on the hardware wallet...")
+			return wallet.SignTx(account, tx, netID)
+		},
+	}
 }
 
 var rsvd *abi.ReserveDollar
@@ -282,7 +414,7 @@ func getReserveDollar() *abi.ReserveDollar {
 			fmt.Fprintln(os.Stderr, "To specify an address, set the --address flag or the RSVD_TOKENADDRESS environment variable.")
 			fmt.Fprintln(os.Stderr, "To deploy a new contract and set the RSVD_TOKENADDRESS in your current shell in a single step, run:")
 			fmt.Fprintln(os.Stderr, "\t$(poke deploy)")
-			os.Exit(1)
+			exit(1)
 		}
 		var err error
 		rsvd, err = abi.NewReserveDollar(common.HexToAddress(address), getNode())
@@ -319,7 +451,7 @@ func parseKey(s string) *ecdsa.PrivateKey {
 				s,
 				"RSVD_"+s[1:],
 			)
-			os.Exit(1)
+			exit(1)
 		}
 		s = env
 	}
@@ -334,7 +466,7 @@ func parseKey(s string) *ecdsa.PrivateKey {
 				origS,
 				"RSVD_"+origS[1:],
 			)
-			os.Exit(1)
+			exit(1)
 		}
 	}
 	return key
@@ -357,7 +489,7 @@ func parseAttoTokens(s string) *big.Int {
 	d, err := decimal.NewFromString(s)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Expected a decimal number, but got %q instead.\n", s)
-		os.Exit(1)
+		exit(1)
 	}
 	return truncateDecimal(d.Shift(18))
 }
@@ -425,8 +557,13 @@ contract and use that contract address in subsequent commands:
 	$ poke balanceOf @0
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		addr, _, _, err := abi.DeployReserveDollar(getSigner(), getNode())
+		addr, tx, _, err := abi.DeployReserveDollar(getSigner(), getNode())
 		check(err, "Failed to deploy Reserve Dollar")
+		receipt, err := bind.WaitMined(context.Background(), getNode(), tx)
+		check(err, "Waiting for deployment tx to be mined")
+		if receipt.Status != types.ReceiptStatusSuccessful {
+			fatal("Deployment transaction reverted")
+		}
 		fmt.Println("export RSVD_TOKENADDRESS=" + addr.Hex())
 	},
 }
@@ -436,7 +573,13 @@ var addressCmd = &cobra.Command{
 	Short:   "Get the address corresponding to the from account",
 	Example: "  poke address\n  poke address -F @1",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(toAddress(parseKey(viper.GetString("from"))).Hex())
+		from := viper.GetString("from")
+		if from == "hardware" {
+			_, account := openHardwareWallet()
+			fmt.Println(account.Address.Hex())
+		} else {
+			fmt.Println(toAddress(parseKey(from)).Hex())
+		}
 	},
 }
 
@@ -779,6 +922,6 @@ var burnFromCmd = &cobra.Command{
 func check(err error, msg string) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, msg+":", err)
-		os.Exit(1)
+		exit(1)
 	}
 }
