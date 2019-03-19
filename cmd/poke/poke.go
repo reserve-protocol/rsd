@@ -557,8 +557,13 @@ contract and use that contract address in subsequent commands:
 	$ poke balanceOf @0
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		addr, _, _, err := abi.DeployReserveDollar(getSigner(), getNode())
+		addr, tx, _, err := abi.DeployReserveDollar(getSigner(), getNode())
 		check(err, "Failed to deploy Reserve Dollar")
+		receipt, err := bind.WaitMined(context.Background(), getNode(), tx)
+		check(err, "Waiting for deployment tx to be mined")
+		if receipt.Status != types.ReceiptStatusSuccessful {
+			fatal("Deployment transaction reverted")
+		}
 		fmt.Println("export RSVD_TOKENADDRESS=" + addr.Hex())
 	},
 }
