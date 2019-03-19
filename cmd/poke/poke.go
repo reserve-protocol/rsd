@@ -139,6 +139,12 @@ func main() {
 			},
 		},
 		{
+			"Other State Reading Commands",
+			[]*cobra.Command{
+				pausedCmd,
+			},
+		},
+		{
 			"ERC-20 Commands",
 			[]*cobra.Command{
 				balanceOfCmd,
@@ -500,8 +506,18 @@ var decimalsCmd = &cobra.Command{
 	Short: "Get the decimals of Reserve Dollars.",
 	Run: func(cmd *cobra.Command, args []string) {
 		decimals, err := getReserveDollar().Decimals(nil)
-		check(err, "symbol() call failed")
+		check(err, "decimals() call failed")
 		fmt.Println(decimals)
+	},
+}
+
+var pausedCmd = &cobra.Command{
+	Use:   "paused",
+	Short: "Get the paused state of Reserve Dollars.",
+	Run: func(cmd *cobra.Command, args []string) {
+		paused, err := getReserveDollar().Paused(nil)
+		check(err, "paused() call failed")
+		fmt.Println(paused)
 	},
 }
 
