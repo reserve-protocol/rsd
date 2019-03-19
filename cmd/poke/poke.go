@@ -434,7 +434,7 @@ contract and use that contract address in subsequent commands:
 var addressCmd = &cobra.Command{
 	Use:     "address",
 	Short:   "Get the address corresponding to the from account",
-	Example: "poke address @1",
+	Example: "  poke address\n  poke address -F @1",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(toAddress(parseKey(viper.GetString("from"))).Hex())
 	},
