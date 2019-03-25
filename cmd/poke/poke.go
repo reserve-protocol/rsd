@@ -210,6 +210,12 @@ func main() {
 				changeNameCmd,
 			},
 		},
+		{
+			"Ethereum Utility Commands",
+			[]*cobra.Command{
+				sendEthCmd,
+			},
+		},
 	}
 	for _, block := range allCmds {
 		root.AddCommand(block.Commands...)
@@ -374,14 +380,17 @@ func openHardwareWallet() (accounts.Wallet, accounts.Account) {
 	return wallet, account
 }
 
+func getNetID() *big.Int {
+	netID, err := getNode().NetworkID(context.Background())
+	check(err, "Failed to get Ethereum network id")
+	return netID
+}
+
 func getSigner() *bind.TransactOpts {
 	from := viper.GetString("from")
 	if from != "hardware" {
 		return bind.NewKeyedTransactor(parseKey(from))
 	}
-
-	netID, err := getNode().NetworkID(context.Background())
-	check(err, "Failed to get Ethereum network id")
 
 	wallet, account := openHardwareWallet()
 	return &bind.TransactOpts{
@@ -399,7 +408,7 @@ func getSigner() *bind.TransactOpts {
 				)
 			}
 			fmt.Println("Waiting for you to confirm on the hardware wallet...")
-			return wallet.SignTx(account, tx, netID)
+			return wallet.SignTx(account, tx, getNetID())
 		},
 	}
 }
@@ -568,18 +577,21 @@ contract and use that contract address in subsequent commands:
 	},
 }
 
+func getAddress() common.Address {
+	from := viper.GetString("from")
+	if from == "hardware" {
+		_, account := openHardwareWallet()
+		return account.Address
+	}
+	return toAddress(parseKey(from))
+}
+
 var addressCmd = &cobra.Command{
 	Use:     "address",
 	Short:   "Get the address corresponding to the from account",
 	Example: "  poke address\n  poke address -F @1",
 	Run: func(cmd *cobra.Command, args []string) {
-		from := viper.GetString("from")
-		if from == "hardware" {
-			_, account := openHardwareWallet()
-			fmt.Println(account.Address.Hex())
-		} else {
-			fmt.Println(toAddress(parseKey(from)).Hex())
-		}
+		fmt.Println(getAddress().Hex())
 	},
 }
 
@@ -916,6 +928,35 @@ var burnFromCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().BurnFrom(getSigner(), parseAddress(args[0]), parseAttoTokens(args[1]))
 		log("burnFrom()", tx, err)
+	},
+}
+
+var sendEthCmd = &cobra.Command{
+	Use:   "send-eth <address> <value>",
+	Short: "Send ETH to an address.",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := context.Background()
+		nonce, err := getNode().PendingNonceAt(ctx, getAddress())
+		check(err, "retrieving nonce")
+		gasPrice, err := getNode().SuggestGasPrice(ctx)
+		check(err, "retrieving gas price suggestion")
+		tx, err := getSigner().Signer(
+			types.NewEIP155Signer(getNetID()),
+			getAddress(),
+			types.NewTransaction(
+				nonce,
+				parseAddress(args[0]),
+				parseAttoTokens(args[1]),
+				21000,
+				gasPrice,
+				nil,
+			),
+		)
+		check(err, "signing transaction")
+		check(getNode().SendTransaction(ctx, tx), "sending transaction")
+		receipt, err := bind.WaitMined(context.Background(), getNode(), tx)
+		check(err, "waiting for "+name+" to be mined")
 	},
 }
 
