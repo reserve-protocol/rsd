@@ -426,7 +426,7 @@ func getReserveDollar() *abi.ReserveDollar {
 			exit(1)
 		}
 		var err error
-		rsvd, err = abi.NewReserveDollar(common.HexToAddress(address), getNode())
+		rsvd, err = abi.NewReserveDollar(hexToAddress(address), getNode())
 		check(err, "Couldn't bind Reserve Dollar contract")
 	}
 	return rsvd
@@ -481,6 +481,22 @@ func parseKey(s string) *ecdsa.PrivateKey {
 	return key
 }
 
+// HexToAddress parses s into a common.Address.
+// Unlike go-ethereum's common.HexToAddress, this version
+// exits if s is not a valid address encoding.
+// This is copied and lightly modifed from:
+// https://github.com/reserve-protocol/reserve/tree/686b03e/pkg/eth
+func hexToAddress(s string) common.Address {
+	b, err := hex.DecodeString(strings.TrimPrefix(s, "0x"))
+	check(err, fmt.Sprintf("invalid hex string %q", s))
+	var address common.Address
+	if len(b) != len(address) {
+		fatalf("invalid address length: %v", len(b))
+	}
+	address.SetBytes(b)
+	return address
+}
+
 // parseAddress parses a hex-encoded address from s.
 // Alternatively, if s begins with "@", parseAddress parses
 // a hex-encoded private key from the environment variable
@@ -490,7 +506,7 @@ func parseAddress(s string) common.Address {
 	if strings.HasPrefix(s, "@") {
 		return toAddress(parseKey(s))
 	}
-	return common.HexToAddress(s)
+	return hexToAddress(s)
 }
 
 // parseAttoTokens reads a decimal-formatted number of tokens and returns that number time 1e18.
@@ -960,7 +976,6 @@ var sendEthCmd = &cobra.Command{
 
 func check(err error, msg string) {
 	if err != nil {
-		fmt.Fprintln(os.Stderr, msg+":", err)
-		exit(1)
+		fatal(msg+":", err)
 	}
 }
