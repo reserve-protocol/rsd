@@ -955,8 +955,6 @@ var sendEthCmd = &cobra.Command{
 		)
 		check(err, "signing transaction")
 		check(getNode().SendTransaction(ctx, tx), "sending transaction")
-		receipt, err := bind.WaitMined(context.Background(), getNode(), tx)
-		check(err, "waiting for "+name+" to be mined")
 	},
 }
 
