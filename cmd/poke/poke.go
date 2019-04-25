@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/xdg"
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/usbwallet"
@@ -214,6 +215,7 @@ func main() {
 			"Ethereum Utility Commands",
 			[]*cobra.Command{
 				sendEthCmd,
+				deployBytecodeCmd,
 			},
 		},
 	}
@@ -967,6 +969,46 @@ var sendEthCmd = &cobra.Command{
 				21000,
 				gasPrice,
 				nil,
+			),
+		)
+		check(err, "signing transaction")
+		check(getNode().SendTransaction(ctx, tx), "sending transaction")
+	},
+}
+
+var deployBytecodeCmd = &cobra.Command{
+	Use:   "deploy-bytecode <hex-encoded bin>",
+	Short: "Deploy arbitrary EVM bytecode.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := context.Background()
+		nonce, err := getNode().PendingNonceAt(ctx, getAddress())
+		check(err, "retrieving nonce")
+		gasPrice, err := getNode().SuggestGasPrice(ctx)
+		check(err, "retrieving gas price suggestion")
+
+		bytecode, err := hex.DecodeString(args[0])
+		check(err, "failed to hex-decode bytecode")
+
+		gasEstimate, err := getNode().EstimateGas(ctx, ethereum.CallMsg{
+			From:     getAddress(),
+			To:       nil,
+			Gas:      0,
+			GasPrice: gasPrice,
+			Value:    big.NewInt(0),
+			Data:     bytecode,
+		})
+		check(err, "estimating gas")
+
+		tx, err := getSigner().Signer(
+			types.NewEIP155Signer(getNetID()),
+			getAddress(),
+			types.NewContractCreation(
+				nonce,
+				big.NewInt(0),
+				gasEstimate,
+				gasPrice,
+				bytecode,
 			),
 		)
 		check(err, "signing transaction")
