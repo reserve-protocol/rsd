@@ -308,9 +308,17 @@ func getNode() *ethclient.Client {
 	return client
 }
 
+var (
+	singletonAccount accounts.Account
+	singletonWallet accounts.Wallet
+)
+
 func openHardwareWallet() (accounts.Wallet, accounts.Account) {
+	if singletonWallet != nil {
+		return singletonWallet, singletonAccount
+	}
+
 	// Open hardware wallet.
-	var wallet accounts.Wallet
 	{
 		// Check for connected Ledgers and Trezors.
 		ledgerHub, err := usbwallet.NewLedgerHub()
@@ -329,7 +337,7 @@ func openHardwareWallet() (accounts.Wallet, accounts.Account) {
 			fatalf("%v hardware wallets found, I don't know which to use", len(wallets))
 		}
 
-		wallet = wallets[0]
+		wallet := wallets[0]
 
 		// "Open" the wallet.
 		// This exchanges initial handshake messages with the wallet.
@@ -351,23 +359,24 @@ func openHardwareWallet() (accounts.Wallet, accounts.Account) {
 		atExit(func() {
 			wallet.Close()
 		})
+
+		singletonWallet = wallet
 	}
 
 	// Open account.
-	var account accounts.Account
 	{
 		var (
 			hardened uint32 = 1 << 31
 			err      error
 		)
-		account, err = wallet.Derive(
+		singletonAccount, err = singletonWallet.Derive(
 			// Standard Ethereum derivation path: m/44'/60'/0'/0 , with index 0
 			// See eg https://ethereum.stackexchange.com/a/19061 for more information about derivation paths
 			// Note that we don't really need to use the standard path here, but it's a fine default.
 			[]uint32{
 				44 | hardened,
 				60 | hardened,
-				0 | hardened,
+				1 | hardened,
 				0,
 				0,
 			},
@@ -379,7 +388,7 @@ func openHardwareWallet() (accounts.Wallet, accounts.Account) {
 		check(err, "deriving account")
 	}
 
-	return wallet, account
+	return singletonWallet, singletonAccount
 }
 
 func getNetID() *big.Int {
