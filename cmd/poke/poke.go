@@ -376,7 +376,7 @@ func openHardwareWallet() (accounts.Wallet, accounts.Account) {
 			[]uint32{
 				44 | hardened,
 				60 | hardened,
-				1 | hardened,
+				0 | hardened,
 				0,
 				0,
 			},
