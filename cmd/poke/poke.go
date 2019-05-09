@@ -310,7 +310,7 @@ func getNode() *ethclient.Client {
 
 var (
 	singletonAccount accounts.Account
-	singletonWallet accounts.Wallet
+	singletonWallet  accounts.Wallet
 )
 
 func openHardwareWallet() (accounts.Wallet, accounts.Account) {
@@ -617,6 +617,7 @@ var addressCmd = &cobra.Command{
 	Use:     "address",
 	Short:   "Get the address corresponding to the from account",
 	Example: "  poke address\n  poke address -F @1",
+	Args:    cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(getAddress().Hex())
 	},
@@ -636,6 +637,7 @@ var balanceOfCmd = &cobra.Command{
 	Short: "Get an account's balance of Reserve Dollars.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(parseAddress(args[0]).Hex())
 		balance, err := getReserveDollar().BalanceOf(nil, parseAddress(args[0]))
 		check(err, "balanceOf() call failed")
 		fmt.Println(toDisplay(balance))
@@ -656,6 +658,7 @@ var allowanceCmd = &cobra.Command{
 var totalSupplyCmd = &cobra.Command{
 	Use:   "totalSupply",
 	Short: "Get the total supply of Reserve Dollars.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		totalSupply, err := getReserveDollar().TotalSupply(nil)
 		check(err, "totalSupply() call failed")
@@ -762,6 +765,7 @@ var decreaseAllowanceCmd = &cobra.Command{
 var minterCmd = &cobra.Command{
 	Use:   "minter",
 	Short: "Show the current minter.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		minter, err := getReserveDollar().Minter(nil)
 		check(err, "minter() call failed")
@@ -772,6 +776,7 @@ var minterCmd = &cobra.Command{
 var pauserCmd = &cobra.Command{
 	Use:   "pauser",
 	Short: "Show the current pauser.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		pauser, err := getReserveDollar().Pauser(nil)
 		check(err, "pauser() call failed")
@@ -782,6 +787,7 @@ var pauserCmd = &cobra.Command{
 var freezerCmd = &cobra.Command{
 	Use:   "freezer",
 	Short: "Show the current freezer.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		freezer, err := getReserveDollar().Freezer(nil)
 		check(err, "freezer() call failed")
@@ -792,6 +798,7 @@ var freezerCmd = &cobra.Command{
 var ownerCmd = &cobra.Command{
 	Use:   "owner",
 	Short: "Show the current owner.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		owner, err := getReserveDollar().Owner(nil)
 		check(err, "owner() call failed")
@@ -802,6 +809,7 @@ var ownerCmd = &cobra.Command{
 var nominatedOwnerCmd = &cobra.Command{
 	Use:   "nominatedOwner",
 	Short: "Show the current nominatedOwner.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		nominatedOwner, err := getReserveDollar().NominatedOwner(nil)
 		check(err, "nominatedOwner() call failed")
@@ -858,6 +866,7 @@ var nominateNewOwnerCmd = &cobra.Command{
 var acceptOwnershipCmd = &cobra.Command{
 	Use:   "acceptOwnership",
 	Short: "Accept ownership nomination. Must be called by current nominatedOwner.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().AcceptOwnership(getSigner())
 		log("acceptOwnership()", tx, err)
@@ -867,6 +876,7 @@ var acceptOwnershipCmd = &cobra.Command{
 var renounceOwnershipCmd = &cobra.Command{
 	Use:   "renounceOwnership",
 	Short: "Renounce ownership. Must be called by current owner.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().RenounceOwnership(getSigner())
 		log("renounceOwnership()", tx, err)
@@ -896,6 +906,7 @@ var changeNameCmd = &cobra.Command{
 var pauseCmd = &cobra.Command{
 	Use:   "pause",
 	Short: "Pause the Reserve Dollar contract.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().Pause(getSigner())
 		log("pause()", tx, err)
@@ -905,6 +916,7 @@ var pauseCmd = &cobra.Command{
 var unpauseCmd = &cobra.Command{
 	Use:   "unpause",
 	Short: "Unpause the Reserve Dollar contract.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().Unpause(getSigner())
 		log("unpause()", tx, err)
@@ -914,6 +926,7 @@ var unpauseCmd = &cobra.Command{
 var freezeCmd = &cobra.Command{
 	Use:   "freeze <address who>",
 	Short: "Freeze an account.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().Freeze(getSigner(), parseAddress(args[1]))
 		log("freeze()", tx, err)
@@ -923,6 +936,7 @@ var freezeCmd = &cobra.Command{
 var unfreezeCmd = &cobra.Command{
 	Use:   "unfreeze <address who>",
 	Short: "Unfreeze an account.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().Unfreeze(getSigner(), parseAddress(args[1]))
 		log("unfreeze()", tx, err)
@@ -932,6 +946,7 @@ var unfreezeCmd = &cobra.Command{
 var wipeCmd = &cobra.Command{
 	Use:   "wipe <address who>",
 	Short: "Wipe an account.",
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().Wipe(getSigner(), parseAddress(args[1]))
 		log("wipe()", tx, err)
@@ -968,13 +983,15 @@ var sendEthCmd = &cobra.Command{
 		check(err, "retrieving nonce")
 		gasPrice, err := getNode().SuggestGasPrice(ctx)
 		check(err, "retrieving gas price suggestion")
+		address := parseAddress(args[0])
+		attoTokens := parseAttoTokens(args[1])
 		tx, err := getSigner().Signer(
 			types.NewEIP155Signer(getNetID()),
 			getAddress(),
 			types.NewTransaction(
 				nonce,
-				parseAddress(args[0]),
-				parseAttoTokens(args[1]),
+				address,
+				attoTokens,
 				21000,
 				gasPrice,
 				nil,
@@ -982,6 +999,7 @@ var sendEthCmd = &cobra.Command{
 		)
 		check(err, "signing transaction")
 		check(getNode().SendTransaction(ctx, tx), "sending transaction")
+		fmt.Printf("Sent %v atto-ETH to %v.\n", attoTokens, address.Hex())
 	},
 }
 
@@ -1021,7 +1039,8 @@ var deployBytecodeCmd = &cobra.Command{
 			),
 		)
 		check(err, "signing transaction")
-		check(getNode().SendTransaction(ctx, tx), "sending transaction")
+		err = getNode().SendTransaction(ctx, tx)
+		log("deploy-bytecode", tx, err)
 	},
 }
 
