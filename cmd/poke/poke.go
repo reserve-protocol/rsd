@@ -918,7 +918,7 @@ var unpauseCmd = &cobra.Command{
 var freezeCmd = &cobra.Command{
 	Use:   "freeze <address who>",
 	Short: "Freeze an account.",
-	Args:  cobra.ExactArgs(0),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().Freeze(getSigner(), parseAddress(args[1]))
 		log("freeze()", tx, err)
@@ -928,7 +928,7 @@ var freezeCmd = &cobra.Command{
 var unfreezeCmd = &cobra.Command{
 	Use:   "unfreeze <address who>",
 	Short: "Unfreeze an account.",
-	Args:  cobra.ExactArgs(0),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().Unfreeze(getSigner(), parseAddress(args[1]))
 		log("unfreeze()", tx, err)
@@ -938,7 +938,7 @@ var unfreezeCmd = &cobra.Command{
 var wipeCmd = &cobra.Command{
 	Use:   "wipe <address who>",
 	Short: "Wipe an account.",
-	Args:  cobra.ExactArgs(0),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		tx, err := getReserveDollar().Wipe(getSigner(), parseAddress(args[1]))
 		log("wipe()", tx, err)
