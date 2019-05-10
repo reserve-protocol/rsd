@@ -637,7 +637,6 @@ var balanceOfCmd = &cobra.Command{
 	Short: "Get an account's balance of Reserve Dollars.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(parseAddress(args[0]).Hex())
 		balance, err := getReserveDollar().BalanceOf(nil, parseAddress(args[0]))
 		check(err, "balanceOf() call failed")
 		fmt.Println(toDisplay(balance))
