@@ -26,7 +26,7 @@ run-dev-container:
 	docker run \
 		--rm \
 		-it \
-		--mount type=bind,source="$(REPO_DIR)",target=/reserve-dollar \
+		--mount type=bind,source="$(REPO_DIR)",target=/rsd-rsd \
 		reserveprotocol/env
 
 run-geth:

@@ -15,7 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/reserve-protocol/reserve-dollar/abi"
+	"github.com/reserve-protocol/rsd/abi"
 )
 
 var delayInSeconds = big.NewInt(12 * 60 * 60)

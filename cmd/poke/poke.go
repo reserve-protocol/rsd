@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/reserve-protocol/reserve-dollar/abi"
+	"github.com/reserve-protocol/rsd/abi"
 )
 
 var defaultKeys = []string{

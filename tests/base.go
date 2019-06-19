@@ -18,8 +18,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/reserve-protocol/reserve-dollar/abi"
-	"github.com/reserve-protocol/reserve-dollar/soltools"
+	"github.com/reserve-protocol/rsd/abi"
+	"github.com/reserve-protocol/rsd/soltools"
 )
 
 type logParser interface {

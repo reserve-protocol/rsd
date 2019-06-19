@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 RUN curl https://dl.google.com/go/go1.12.linux-amd64.tar.gz | tar -C /usr/local -xz
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-WORKDIR /reserve-dollar
+WORKDIR /rsd
 COPY package.json package-lock.json go.mod go.sum ./
 RUN npm install
 RUN go mod download
