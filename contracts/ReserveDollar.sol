@@ -39,7 +39,7 @@ contract ReserveDollar is IERC20 {
 
     // Basic token data
     string public name = "Reserve Dollar";
-    string public symbol = "RSVD";
+    string public symbol = "RSD";
     uint8 public constant decimals = 18;
     uint256 public totalSupply;
 

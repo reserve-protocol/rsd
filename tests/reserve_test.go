@@ -112,7 +112,7 @@ func (s *ReserveDollarSuite) TestName() {
 func (s *ReserveDollarSuite) TestSymbol() {
 	symbol, err := s.reserve.Symbol(nil)
 	s.NoError(err)
-	s.Equal("RSVD", symbol)
+	s.Equal("RSD", symbol)
 }
 
 func (s *ReserveDollarSuite) TestDecimals() {

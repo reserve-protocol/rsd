@@ -1,6 +1,6 @@
 # Smart Contracts for the Reserve Dollar
 
-The Reserve Dollar (RSVD) is an [ERC-20][] token. RSVD is designed to maintain a stable price on the open market, through issuance and redemption of Reserve Dollars for fiat currency: 1 RSVD per 1 USD.
+The Reserve Dollar (RSD) is an [ERC-20][] token. RSD is designed to maintain a stable price on the open market, through issuance and redemption of Reserve Dollars for fiat currency: 1 RSD per 1 USD.
 
 There are three main smart contracts in `contracts/`: `ReserveDollar`, `ReserveDollarEternalStorage`, and `MintAndBurnAdmin`.
 
@@ -27,22 +27,22 @@ Some consequences of this philosophy:
 
 We've aimed to keep these choices from yielding *tedious* code -- tedium makes it hard to focus, so tedium leads to mistakes. Nonetheless, in secure code, boring is better than magical.
 
-# Features of the RSVD Token
+# Features of the RSD Token
 
 ## User-Facing Features
 
-RSVD offers the [ERC-20][] interface for compatibility with standard wallet software. So that clients can more efficiently work around the ERC-20 [approval API bug][API Bug], RSVD also implements `increaseAllowance` and `decreaseAllowance`.
+RSD offers the [ERC-20][] interface for compatibility with standard wallet software. So that clients can more efficiently work around the ERC-20 [approval API bug][API Bug], RSD also implements `increaseAllowance` and `decreaseAllowance`.
 
 [API Bug]: https://docs.google.com/document/d/1YLPtQxZu1UAvO9cZ1O2RPXBbT0mooh4DYKjA_jp-RLM/edit
 
-These are the only non-view API features of the RSVD token that an Ethereum account should be able to call without special authorization.
+These are the only non-view API features of the RSD token that an Ethereum account should be able to call without special authorization.
 
 ## Administration Roles and Features
-The RSVD contacts have a number of features that should be usable only with special authorization. An account has a special authorization if a contract has that account's address assigned to some _role_.
+The RSD contacts have a number of features that should be usable only with special authorization. An account has a special authorization if a contract has that account's address assigned to some _role_.
 
 ### Roles in `ReserveDollar`
 
-- `owner` is the master key for the entire RSVD token. The private key for `owner` is securely stored off-site, and only accessed in deployment, contract upgrade, and slow system recovery operations. `owner` is authorized to:
+- `owner` is the master key for the entire RSD token. The private key for `owner` is securely stored off-site, and only accessed in deployment, contract upgrade, and slow system recovery operations. `owner` is authorized to:
     - Change the name and ticker symbol of the Reserve Dollar. (`changeName`)
     - Change the addresses of any other roles. (`changeMinter`, `changePauser`, `changeFreezer`)
     - Nominate a new owner. (`nominateNewOwner`)

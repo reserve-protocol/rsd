@@ -1,15 +1,15 @@
 # Reserve Dollar
 
->The Reserve Dollar (RSVD) is a fiat-backed stablecoin from [Reserve](https://reserve.org).
+>The Reserve Dollar (RSD) is a fiat-backed stablecoin from [Reserve](https://reserve.org).
 
-The Reserve Dollar is designed to maintain a stable price on the open market, by offering issuance and redemption of Reserve Dollars for fiat currency: 1 RSVD per 1 USD.
+The Reserve Dollar is designed to maintain a stable price on the open market, by offering issuance and redemption of Reserve Dollars for fiat currency: 1 RSD per 1 USD.
 
 The Reserve Dollar is *not* the Reserve or Reserve Share token described in the Reserve [whitepaper](https://reserve.org/whitepaper). The whitepaper design is more fully decentralized, and more complicated. Rather, the Reserve Dollar is an initial stablecoin, suitable for building into products to test, being the first in a series of steps towards total decentralization, and to be an early-stage asset in the vault of the whitepaper design.
 
 ## What does it do?
 The Reserve Dollar offers normal [ERC-20](http://eips.ethereum.org/EIPS/eip-20) behavior.
 
-Reserve administers this token and offers issuance and redemption to verified users. Once a user has registered with our web portal (not in this repository) and entered information necessary for KYC/AML checks, the user will be eligible to buy and sell RSVD for fiat currency. When a user buys RSVD for fiat through our system, we mint RSVD to give them; when a user sells RSVD for fiat through our system, we burn those RSVD.
+Reserve administers this token and offers issuance and redemption to verified users. Once a user has registered with our web portal (not in this repository) and entered information necessary for KYC/AML checks, the user will be eligible to buy and sell RSD for fiat currency. When a user buys RSD for fiat through our system, we mint RSD to give them; when a user sells RSD for fiat through our system, we burn those RSD.
 
 To this end, Reserve controls external admin accounts. The admin accounts can mint and burn tokens to represent the on-chain side of these transactions. Various admin accounts can also freeze accounts, wipe long-frozen accounts, pause the token, upgrade the token, and update admin addresses.
 
